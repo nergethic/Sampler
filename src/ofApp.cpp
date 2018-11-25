@@ -1,38 +1,104 @@
 #include "ofApp.h"
 #include <vector>
 
-ofImage image;
-
-enum MessageIndex {
-	MESSAGE_TYPE = 0,
-	DATA
-};
-
 enum class MessageType {
 	KEY = 0,
 	PARAMETER
 };
+
+enum ParameterType {
+	ATTACK = 0,
+	HOLD,
+	DECAY,
+	SUSTAIN,
+	RELEASE
+};
+
+void ofApp::sendKeyOn(int key) {
+	serialBuffer[0] = (char)MessageType::KEY;
+	serialBuffer[1] = (char)key; // NOTE ON
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::sendKeyOff() {
+	serialBuffer[0] = (char)MessageType::KEY;
+	serialBuffer[1] = 255; // NOTE OFF
+	serial.writeBytes(serialBuffer, 8);
+	for (size_t i = 0; i < 8; ++i) serialBuffer[i] = 0;
+}
+
+void ofApp::sendParameterChange(short type, uint16_t value) {
+	serialBuffer[0] = (char)MessageType::PARAMETER;
+	serialBuffer[1] = type;
+	*((uint16_t*)(serialBuffer + 2)) = (uint16_t)value;
+
+	serial.writeBytes(serialBuffer, 8);
+	for (size_t i = 0; i < 8; ++i) serialBuffer[i] = 0;
+}
 
 //--------------------------------------------------------------
 void ofApp::setup() {
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
 
-	audioOn = false;
+	float i = 0;
+	while (i < TWO_PI) { // make a heart
+		float r = (2 - 2 * sin(i) + sin(i)*sqrt(abs(cos(i))) / (sin(i) + 1.4)) * -80;
+		float x = ofGetWidth() / 2 + cos(i) * r;
+		float y = ofGetHeight() / 2 + sin(i) * r;
+		line.addVertex(x, y);
+		i += 0.005*HALF_PI*0.5;
+	}
+	line.close(); // close the shape
 
-	// UI
+	// UI elements
 	int x = 20;
 	int y = 20;
 	int p = 40;
 	ofxDatGuiComponent* component;
+
+	ahdsr[0] = 10.5;
+	ahdsr[1] = 2.5;
+	ahdsr[2] = 35.0;
+	ahdsr[3] = 0.0;
+	ahdsr[4] = 300.0;
 
 	component = new ofxDatGuiButton("button");
 	component->setPosition(x, y);
 	component->onButtonEvent(this, &ofApp::onButtonEvent);
 	components.push_back(component);
 
-	//ofSoundDevice::Api:MS_DS;
+	y += component->getHeight() + p;
+	component = new ofxDatGuiSlider("attack", 0.0, 11880.0, ahdsr[0]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
 
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("hold", 0.0, 11880.0, ahdsr[1]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("decay", 0.0, 11880.0, ahdsr[2]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("sustain", 0.0, 1.0, ahdsr[3]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("release", 0.0, 11880.0, ahdsr[4]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	// audio buffers
 	sampleRate = 44100;
 	bufferSize = 256; //8192;
 	numChannels = 2;
@@ -61,6 +127,8 @@ void ofApp::setup() {
 		outStream.setup(outStreamSettings);
 	}
 
+
+	// serial port
 	vector <ofSerialDeviceInfo> deviceList = serial.getDeviceList();
 	if (!serial.setup("COM4", 115200)) {
 		ofLogError() << "could not open serial port";
@@ -74,9 +142,7 @@ void ofApp::update() {
 }
 
 void ofApp::exit() {
-	serialBuffer[MessageIndex::MESSAGE_TYPE] = (char)MessageType::KEY;
-	serialBuffer[MessageIndex::DATA] = 255; // NOTE ON
-	serial.writeBytes(serialBuffer, 8);
+	sendKeyOff();
 
 	if (audioOn) {
 		inStream.close();
@@ -93,22 +159,14 @@ void ofApp::audioIn(ofSoundBuffer& input) {
 		right = input[i*numChannels + 1];
 		circular_buf_put(buffer, left);
 		circular_buf_put(buffer, right);
-		//circular_buf_put(buffer, input[i*numChannels + 0]);
-		//left[i]  = input[i*numChannels + 0];
-		//right[i] = input[i*numChannels + 1];
 	}
 }
 
 void ofApp::audioOut(ofSoundBuffer& output) {
 
-	float inputSample;
-	float currentSample;
 	float* data = new float;
 
 	for (size_t i = 0; i < output.getNumFrames(); ++i) {
-
-		//inputSample = inputBuffer[i];
-		//currentSample = inputSample;
 
 		circular_buf_get(buffer, data);
 		output[i * 2 + 0] = *data;
@@ -119,11 +177,11 @@ void ofApp::audioOut(ofSoundBuffer& output) {
 }
 
 //--------------------------------------------------------------
-
-//--------------------------------------------------------------
 void ofApp::draw() {
 	ofBackground(40);
 	for (int i = 0; i < components.size(); i++) components[i]->draw();
+
+	line.draw();
 	//fbo->begin();
 	//ofClear(ui->pColor["bg"]);
 	//drawFbo();
@@ -135,9 +193,7 @@ void ofApp::keyPressed(int key) {
 
 	if (lastPressedKey == key) return;
 
-	serialBuffer[MessageIndex::MESSAGE_TYPE] = (char)MessageType::KEY;
-	serialBuffer[MessageIndex::DATA] = (char)key; // NOTE ON
-	serial.writeBytes(serialBuffer, 8);
+	sendKeyOn(key);
 
 	//bool byteWasWritten = serial.writeByte((char)key);
 	//if (!byteWasWritten) {
@@ -152,56 +208,34 @@ void ofApp::keyReleased(int key) {
 	if (lastPressedKey == key) {
 		lastPressedKey = -1;
 	}
-	serialBuffer[MessageIndex::MESSAGE_TYPE] = (char)MessageType::KEY;
-	serialBuffer[MessageIndex::DATA] = 255; // NOTE OFF
-	serial.writeBytes(serialBuffer, 8);
+	sendKeyOff();
 }
 
-enum ParameterType {
-	ATTACK = 0,
-	HOLD,
-	DECAY,
-	SUSTAIN,
-	RELEASE
-};
-
-//--------------------------------------------------------------
+// ---------- UI EVENTS ----------
 
 void ofApp::onButtonEvent(ofxDatGuiButtonEvent e)
 {
 	cout << "onButtonEvent: " << e.target->getLabel() << endl;
 }
-/*
-void ofApp::uiEvents(uiEv& e) {
-	if (*tab == "synth") {
 
-		serialBuffer[MessageIndex::MESSAGE_TYPE] = (char)MessageType::PARAMETER;
-		*((uint16_t*)(serialBuffer + 2)) = (uint16_t)e.f;
-		unsigned char val = 255;
+void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
+{
+	unsigned char type;
 
-		if (e.name == "attack") {
-			val = ParameterType::ATTACK;
-		}
+	string name = e.target->getLabel();
 
-		if (e.name == "hold") {
-			val = ParameterType::HOLD;
-		}
-
-		if (e.name == "decay") {
-			val = ParameterType::DECAY;
-		}
-
-		if (e.name == "sustain") {
-			val = ParameterType::SUSTAIN;
-		}
-
-		if (e.name == "release") {
-			val = ParameterType::RELEASE;
-		}
-
-		if (val == 255) return;
-		serialBuffer[1] = val;
-		serial.writeBytes(serialBuffer, 8);
+	if (name == "attack") {
+		type = ParameterType::ATTACK;
+	} else if (name == "hold") {
+		type = ParameterType::HOLD;
+	} else if (name == "decay") {
+		type = ParameterType::DECAY;
+	} else if (name == "sustain") {
+		type = ParameterType::SUSTAIN;
+	} else if (name == "release") {
+		type = ParameterType::RELEASE;
 	}
+	else return;
+
+	sendParameterChange(type, e.value);
 }
-*/

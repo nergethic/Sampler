@@ -15,7 +15,7 @@ class ofApp : public ofBaseApp {
 		void audioIn(ofSoundBuffer& input);
 		void audioOut(ofSoundBuffer& output);
 
-		void keyPressed(int key);s
+		void keyPressed(int key);
 		void keyReleased(int key);
 	
 		vector<ofxDatGuiComponent*> components;

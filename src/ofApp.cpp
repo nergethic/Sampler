@@ -36,20 +36,42 @@ void ofApp::sendParameterChange(short type, uint16_t value) {
 	for (size_t i = 0; i < 8; ++i) serialBuffer[i] = 0;
 }
 
+void ofApp::updateEnvelopePoints(int width, int height) {
+	int x = 0, y = height;
+	int offsetX = ofGetWidth() / 2;
+	int offsetY = ofGetHeight() / 2;
+
+	int maxWidth = 5 * 11880;
+	float ratio = (float)width / (float)maxWidth;
+	float ratioY = (float)height / (float)maxWidth;
+
+	line.clear();
+
+	line.addVertex(offsetX + x, offsetY);
+
+	// A
+	x = ahdsr[0] * ratio;
+	y = height;
+	line.addVertex(offsetX + x, offsetY - y);
+	// H
+	x += ahdsr[1] * ratio;
+	line.addVertex(offsetX + x, offsetY - y);
+	// D S
+	x += ahdsr[2] * ratio;
+	y = ahdsr[3]*height;
+	line.addVertex(offsetX + x, offsetY - y);
+	x += 30;
+	line.addVertex(offsetX + x, offsetY - y);
+	// R
+	x += ahdsr[4] * ratio;
+	y = 0;
+	line.addVertex(offsetX + x, offsetY - y);
+}
+
 //--------------------------------------------------------------
 void ofApp::setup() {
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
-
-	float i = 0;
-	while (i < TWO_PI) { // make a heart
-		float r = (2 - 2 * sin(i) + sin(i)*sqrt(abs(cos(i))) / (sin(i) + 1.4)) * -80;
-		float x = ofGetWidth() / 2 + cos(i) * r;
-		float y = ofGetHeight() / 2 + sin(i) * r;
-		line.addVertex(x, y);
-		i += 0.005*HALF_PI*0.5;
-	}
-	line.close(); // close the shape
 
 	// UI elements
 	int x = 20;
@@ -139,6 +161,7 @@ void ofApp::setup() {
 //--------------------------------------------------------------
 void ofApp::update() {
 	for (int i = 0; i < components.size(); i++) components[i]->update();
+	updateEnvelopePoints(400, 200);
 }
 
 void ofApp::exit() {
@@ -221,19 +244,25 @@ void ofApp::onButtonEvent(ofxDatGuiButtonEvent e)
 void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 {
 	unsigned char type;
+	float val = e.value;
 
 	string name = e.target->getLabel();
 
 	if (name == "attack") {
 		type = ParameterType::ATTACK;
+		ahdsr[0] = val;
 	} else if (name == "hold") {
 		type = ParameterType::HOLD;
+		ahdsr[1] = val;
 	} else if (name == "decay") {
 		type = ParameterType::DECAY;
+		ahdsr[2] = val;
 	} else if (name == "sustain") {
 		type = ParameterType::SUSTAIN;
+		ahdsr[3] = val;
 	} else if (name == "release") {
 		type = ParameterType::RELEASE;
+		ahdsr[4] = val;
 	}
 	else return;
 

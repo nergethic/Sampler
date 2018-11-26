@@ -26,6 +26,8 @@ class ofApp : public ofBaseApp {
 		void onButtonEvent(ofxDatGuiButtonEvent e);
 		void onSliderEvent(ofxDatGuiSliderEvent e);
 
+		void updateEnvelopePoints(int width, int height);
+
 		bool audioOn = false;
 		int lastPressedKey;
 	

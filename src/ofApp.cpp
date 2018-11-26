@@ -1,40 +1,5 @@
 #include "ofApp.h"
-#include <vector>
-
-enum class MessageType {
-	KEY = 0,
-	PARAMETER
-};
-
-enum ParameterType {
-	ATTACK = 0,
-	HOLD,
-	DECAY,
-	SUSTAIN,
-	RELEASE
-};
-
-void ofApp::sendKeyOn(int key) {
-	serialBuffer[0] = (char)MessageType::KEY;
-	serialBuffer[1] = (char)key; // NOTE ON
-	serial.writeBytes(serialBuffer, 8);
-}
-
-void ofApp::sendKeyOff() {
-	serialBuffer[0] = (char)MessageType::KEY;
-	serialBuffer[1] = 255; // NOTE OFF
-	serial.writeBytes(serialBuffer, 8);
-	for (size_t i = 0; i < 8; ++i) serialBuffer[i] = 0;
-}
-
-void ofApp::sendParameterChange(short type, uint16_t value) {
-	serialBuffer[0] = (char)MessageType::PARAMETER;
-	serialBuffer[1] = type;
-	*((uint16_t*)(serialBuffer + 2)) = (uint16_t)value;
-
-	serial.writeBytes(serialBuffer, 8);
-	for (size_t i = 0; i < 8; ++i) serialBuffer[i] = 0;
-}
+//#include <vector>
 
 void ofApp::updateEnvelopePoints(int width, int height) {
 	int x = 0, y = height;
@@ -80,10 +45,14 @@ void ofApp::setup() {
 	ofxDatGuiComponent* component;
 
 	ahdsr[0] = 10.5;
-	ahdsr[1] = 2.5;
-	ahdsr[2] = 35.0;
-	ahdsr[3] = 0.0;
-	ahdsr[4] = 300.0;
+	ahdsr[1] = 16.5;
+	ahdsr[2] = 300.0;
+	ahdsr[3] = 0.5;
+	ahdsr[4] = 230.0;
+
+	for (int i = 0; i < 8; ++i) {
+		steps[i] = 0;
+	}
 
 	component = new ofxDatGuiButton("button");
 	component->setPosition(x, y);
@@ -118,6 +87,13 @@ void ofApp::setup() {
 	component = new ofxDatGuiSlider("release", 0.0, 11880.0, ahdsr[4]);
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight() + p;
+	component = new ofxDatGuiMatrix("steps", 8, true);
+	component->setWidth(500, 100.0);
+	component->setPosition(x, y);
+	component->onMatrixEvent(this, &ofApp::onMatrixEvent);
 	components.push_back(component);
 
 	// audio buffers
@@ -166,6 +142,7 @@ void ofApp::update() {
 
 void ofApp::exit() {
 	sendKeyOff();
+	sendSequencerReset();
 
 	if (audioOn) {
 		inStream.close();
@@ -214,15 +191,13 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key) {
 
+	if (key >= 48 && key < 58) {
+	//	steps[key - 48] = !steps[key - 48];
+	}
+	//else if (lastPressedKey == key) return;
 	if (lastPressedKey == key) return;
 
 	sendKeyOn(key);
-
-	//bool byteWasWritten = serial.writeByte((char)key);
-	//if (!byteWasWritten) {
-	//	printf("byte was not written to serial port");
-	//}
-
 	lastPressedKey = key;
 }
 
@@ -249,22 +224,26 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 	string name = e.target->getLabel();
 
 	if (name == "attack") {
-		type = ParameterType::ATTACK;
+		type = EnvelopeMsgType::ATTACK;
 		ahdsr[0] = val;
 	} else if (name == "hold") {
-		type = ParameterType::HOLD;
+		type = EnvelopeMsgType::HOLD;
 		ahdsr[1] = val;
 	} else if (name == "decay") {
-		type = ParameterType::DECAY;
+		type = EnvelopeMsgType::DECAY;
 		ahdsr[2] = val;
 	} else if (name == "sustain") {
-		type = ParameterType::SUSTAIN;
+		type = EnvelopeMsgType::SUSTAIN;
 		ahdsr[3] = val;
 	} else if (name == "release") {
-		type = ParameterType::RELEASE;
+		type = EnvelopeMsgType::RELEASE;
 		ahdsr[4] = val;
 	}
 	else return;
 
-	sendParameterChange(type, e.value);
+	sendEnvelopeChange(type, e.value);
+}
+
+void ofApp::onMatrixEvent(ofxDatGuiMatrixEvent e) {
+	sendSequencerStepPress(e.child);
 }

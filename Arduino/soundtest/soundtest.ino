@@ -21,8 +21,12 @@ int freq = 100;
 char serialBuffer[8];
 float stepTime;
 float previousTime, currentTime;
-bool activeSteps[8];
-short currentStep = 0;
+short currentStepIndex = 0;
+
+struct SequencerStep {
+  bool on;
+};
+SequencerStep sequencerSteps[8];
 
 void setup() {
   // put your setup code here, to run once:
@@ -36,16 +40,22 @@ void setup() {
   previousTime = 0;
 
   for (int i=0; i < 8; ++i) {
-    activeSteps[i] = 0;
+    sequencerSteps[i].on = 0;
   }
   
   AudioMemory(80);
   delay(500);
 }
 
-enum SerialMessageType {
+enum MessageType {
   KEY = 0,
-  PARAMETER = 1
+  ENVELOPE,
+  SEQUENCER
+};
+
+enum SequencerMsgType {
+  STEP_PRESS = 0,
+  RESET
 };
 
 void handleSerialInput() {
@@ -53,23 +63,26 @@ void handleSerialInput() {
 
     Serial.readBytes(serialBuffer, 8);
 
-    switch ((SerialMessageType)serialBuffer[0]) {
+    switch ((MessageType)serialBuffer[0]) {
       case KEY: {
+        
         char keyCode = serialBuffer[1];
         if (keyCode == 255) {
           envelope1.noteOff();
-        } else {
-          if (keyCode >= 48 && keyCode < 58) {
-              activeSteps[keyCode-48] = !activeSteps[keyCode-48];
-          } else {
-            freq = 340+ 2*((int)serialBuffer[1]);
-            sine1.frequency(freq);
-            envelope1.noteOn();
-          }
+          break;
         }
+        
+        if (keyCode >= 48 && keyCode < 58) {
+            sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
+        } else {
+          freq = 340+ 2*((int)serialBuffer[1]);
+          sine1.frequency(freq);
+          envelope1.noteOn();
+        }
+        
       } break;
 
-      case PARAMETER: {
+      case ENVELOPE: {
         short val = *((short*)(serialBuffer+2));
         
         switch (serialBuffer[1]) {
@@ -94,6 +107,17 @@ void handleSerialInput() {
           } break;
         }
       } break;
+
+      case SEQUENCER: {
+        if (serialBuffer[1] == STEP_PRESS) {
+          int stepIndex = serialBuffer[2];
+          sequencerSteps[stepIndex].on = !sequencerSteps[stepIndex].on;
+        } else if (serialBuffer[1] == RESET) {
+          for (int i=0; i < 8; ++i) {
+            sequencerSteps[i].on = 0;
+          }
+        }
+      } break;
     }
   }
 }
@@ -108,15 +132,15 @@ void loop() {
   currentTime = millis();
   if (currentTime - previousTime >= 200) {
     
-    if (activeSteps[currentStep] == true) {
+    if (sequencerSteps[currentStepIndex].on == true) {
       envelope1.noteOn();
       delay(50);
       envelope1.noteOff();
     }
 
-    currentStep++;
-    if (currentStep == 8) {
-      currentStep = 0;
+    currentStepIndex++;
+    if (currentStepIndex == 8) {
+      currentStepIndex = 0;
     }
     
     previousTime = currentTime;

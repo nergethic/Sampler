@@ -3,6 +3,26 @@
 #include "ofMain.h"
 #include "ofxDatGui.h"
 #include "circularBuffer.h"
+#include "serial.h"
+
+enum class MessageType {
+	KEY = 0,
+	ENVELOPE,
+	SEQUENCER
+};
+
+enum SequencerMsgType {
+	STEP_PRESS = 0,
+	RESET
+};
+
+enum EnvelopeMsgType {
+	ATTACK = 0,
+	HOLD,
+	DECAY,
+	SUSTAIN,
+	RELEASE
+};
 
 class ofApp : public ofBaseApp {
 
@@ -20,11 +40,14 @@ class ofApp : public ofBaseApp {
 
 		void sendKeyOn(int key);
 		void sendKeyOff();
-		void sendParameterChange(short type, uint16_t value);
+		void sendEnvelopeChange(short type, uint16_t value);
+		void sendSequencerStepPress(int stepIndex);
+		void sendSequencerReset();
 	
 		vector<ofxDatGuiComponent*> components;
 		void onButtonEvent(ofxDatGuiButtonEvent e);
 		void onSliderEvent(ofxDatGuiSliderEvent e);
+		void onMatrixEvent(ofxDatGuiMatrixEvent e);
 
 		void updateEnvelopePoints(int width, int height);
 
@@ -52,4 +75,6 @@ class ofApp : public ofBaseApp {
 
 		ofPolyline line;
 		float ahdsr[5];
+
+		bool steps[8];
 };

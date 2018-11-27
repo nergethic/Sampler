@@ -11,6 +11,12 @@ enum class MessageType {
 	SEQUENCER
 };
 
+enum KeyMsgType {
+	KEY_PRESS = 0,
+	KEY_RELEASE,
+	FREQUENCY_CHANGE
+};
+
 enum SequencerMsgType {
 	STEP_PRESS = 0,
 	RESET
@@ -22,6 +28,11 @@ enum EnvelopeMsgType {
 	DECAY,
 	SUSTAIN,
 	RELEASE
+};
+
+struct KeyFreq {
+	char key;
+	float frequency;
 };
 
 class ofApp : public ofBaseApp {
@@ -43,6 +54,7 @@ class ofApp : public ofBaseApp {
 		void sendEnvelopeChange(short type, uint16_t value);
 		void sendSequencerStepPress(int stepIndex);
 		void sendSequencerReset();
+		void sendFrequencyChange(float freq);
 	
 		vector<ofxDatGuiComponent*> components;
 		void onButtonEvent(ofxDatGuiButtonEvent e);
@@ -77,4 +89,7 @@ class ofApp : public ofBaseApp {
 		float ahdsr[5];
 
 		bool steps[8];
+
+		int octave = 0;
+		KeyFreq keyFreq[12];
 };

@@ -11,14 +11,24 @@ void clearSerialBuffer(unsigned char* buffer) {
 
 void ofApp::sendKeyOn(int key) {
 	serialBuffer[0] = (char)MessageType::KEY;
-	serialBuffer[1] = (char)key; // NOTE ON
+	serialBuffer[1] = KeyMsgType::KEY_PRESS;
+	serialBuffer[2] = (char)key;
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
 }
 
 void ofApp::sendKeyOff() {
 	serialBuffer[0] = (char)MessageType::KEY;
-	serialBuffer[1] = 255; // NOTE OFF
+	serialBuffer[1] = KeyMsgType::KEY_RELEASE;
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendFrequencyChange(float freq) {
+	serialBuffer[0] = (char)MessageType::KEY;
+	serialBuffer[1] = KeyMsgType::FREQUENCY_CHANGE;
+	*((float*)(serialBuffer + 2)) = freq;
+
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
 }

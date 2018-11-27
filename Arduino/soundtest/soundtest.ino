@@ -17,7 +17,7 @@ AudioConnection          patchCord5(envelope1, 0, usb1, 0);
 AudioControlSGTL5000     sgtl5000_1;     //xy=490,502
 // GUItool: end automatically generated code
 
-int freq = 100;
+float freq = 100;
 char serialBuffer[8];
 float stepTime;
 float previousTime, currentTime;
@@ -53,6 +53,12 @@ enum MessageType {
   SEQUENCER
 };
 
+enum KeyMsgType {
+  KEY_PRESS = 0,
+  KEY_RELEASE,
+  FREQUENCY_CHANGE
+};
+
 enum SequencerMsgType {
   STEP_PRESS = 0,
   RESET
@@ -65,21 +71,22 @@ void handleSerialInput() {
 
     switch ((MessageType)serialBuffer[0]) {
       case KEY: {
-        
-        char keyCode = serialBuffer[1];
-        if (keyCode == 255) {
+        char msgType = serialBuffer[1];
+
+        if (msgType == KEY_RELEASE) {
           envelope1.noteOff();
-          break;
-        }
+          } else if (msgType == KEY_PRESS) {
+          char keyCode = serialBuffer[2];
         
-        if (keyCode >= 48 && keyCode < 58) {
-            sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
-        } else {
-          freq = 340+ 2*((int)serialBuffer[1]);
-          sine1.frequency(freq);
-          envelope1.noteOn();
+          if (keyCode >= 48 && keyCode < 58) {
+              sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
+          } else {
+            envelope1.noteOn();
+          }
+        } else if (msgType == FREQUENCY_CHANGE) {
+            freq = *((float*)(serialBuffer+2));
+            sine1.frequency(freq);
         }
-        
       } break;
 
       case ENVELOPE: {

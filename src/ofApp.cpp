@@ -38,6 +38,10 @@ void ofApp::setup() {
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
 
+	keyFreq[0].key = 'a';
+	keyFreq[0].frequency = 65.406392;
+	// praca domowa dla Filipa :)
+
 	// UI elements
 	int x = 20;
 	int y = 20;
@@ -128,7 +132,7 @@ void ofApp::setup() {
 
 	// serial port
 	vector <ofSerialDeviceInfo> deviceList = serial.getDeviceList();
-	if (!serial.setup("COM4", 115200)) {
+	if (!serial.setup("COM5", 115200)) {
 		ofLogError() << "could not open serial port";
 		//OF_EXIT_APP(0);
 	}
@@ -191,12 +195,28 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key) {
 
+
 	if (key >= 48 && key < 58) {
 	//	steps[key - 48] = !steps[key - 48];
 	}
 	//else if (lastPressedKey == key) return;
 	if (lastPressedKey == key) return;
 
+	float freq;
+
+	for (int i = 0; i < 12; ++i) {
+		if (keyFreq[i].key == (char)key) {
+			freq = keyFreq[i].frequency * pow(2, octave);
+			break;
+		}
+	}
+
+	if ((char)key == 'x') {
+		octave++;
+		return;
+	}
+
+	sendFrequencyChange(freq);
 	sendKeyOn(key);
 	lastPressedKey = key;
 }

@@ -40,7 +40,40 @@ void ofApp::setup() {
 
 	keyFreq[0].key = 'a';
 	keyFreq[0].frequency = 65.406392;
-	// praca domowa dla Filipa :)
+	
+	keyFreq[1].key = 'w';
+	keyFreq[1].frequency = 69.295658;
+
+	keyFreq[2].key = 's';
+	keyFreq[2].frequency = 73.416193;
+
+	keyFreq[3].key = 'e';
+	keyFreq[3].frequency = 77.781747;
+
+	keyFreq[4].key = 'd';
+	keyFreq[4].frequency = 82.406890;
+
+	keyFreq[5].key = 'f';
+	keyFreq[5].frequency = 87.307059;
+
+	keyFreq[6].key = 't';
+	keyFreq[6].frequency = 92.498607;
+
+	keyFreq[7].key = 'g';
+	keyFreq[7].frequency = 97.998860;
+
+	keyFreq[8].key = 'y';
+	keyFreq[8].frequency = 103.826175;
+
+	keyFreq[9].key = 'h';
+	keyFreq[9].frequency = 110.000001;
+
+	keyFreq[10].key = 'u';
+	keyFreq[10].frequency = 116.540942;
+
+	keyFreq[11].key = 'j';
+	keyFreq[11].frequency = 123.470827;
+	
 
 	// UI elements
 	int x = 20;

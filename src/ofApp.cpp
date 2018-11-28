@@ -165,8 +165,9 @@ void ofApp::setup() {
 
 	// serial port
 	vector <ofSerialDeviceInfo> deviceList = serial.getDeviceList();
-	if (!serial.setup("COM5", 115200)) {
-		ofLogError() << "could not open serial port";
+	if (!serial.setup("COM4", 115200)) {
+		serial.setup("COM5", 115200);
+		//ofLogError() << "could not open serial port";
 		//OF_EXIT_APP(0);
 	}
 }
@@ -235,21 +236,32 @@ void ofApp::keyPressed(int key) {
 	//else if (lastPressedKey == key) return;
 	if (lastPressedKey == key) return;
 
-	float freq;
+	float freq = 0.0f;
 
 	for (int i = 0; i < 12; ++i) {
 		if (keyFreq[i].key == (char)key) {
 			freq = keyFreq[i].frequency * pow(2, octave);
+			sendFrequencyChange(freq);
 			break;
 		}
 	}
 
 	if ((char)key == 'x') {
 		octave++;
+		if (octave > 5) {
+			octave = 5;
+		}
 		return;
 	}
 
-	sendFrequencyChange(freq);
+	if ((char)key == 'z') {
+		octave--;
+		if (octave < 0) {
+			octave = 0;
+		}
+		return;
+	}
+
 	sendKeyOn(key);
 	lastPressedKey = key;
 }

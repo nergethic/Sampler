@@ -90,6 +90,6 @@ class ofApp : public ofBaseApp {
 
 		bool steps[8];
 
-		int octave = 0;
+		int octave = 3;
 		KeyFreq keyFreq[12];
 };

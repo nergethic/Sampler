@@ -90,27 +90,27 @@ void handleSerialInput() {
       } break;
 
       case ENVELOPE: {
-        short val = *((short*)(serialBuffer+2));
+        float val = *((float*)(serialBuffer+2));
         
         switch (serialBuffer[1]) {
           case 0: {
-            envelope1.attack((float)val);
+            envelope1.attack(val);
           } break;
 
           case 1: {
-            envelope1.hold((float)val);
+            envelope1.hold(val);
           } break;
 
           case 2: {
-            envelope1.decay((float)val);
+            envelope1.decay(val);
           } break;
 
           case 3: {
-            envelope1.sustain((float)val);
+            envelope1.sustain(val);
           } break;
 
           case 4: {
-            envelope1.release((float)val);
+            envelope1.release(val);
           } break;
         }
       } break;

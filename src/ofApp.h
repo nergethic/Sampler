@@ -51,7 +51,7 @@ class ofApp : public ofBaseApp {
 
 		void sendKeyOn(int key);
 		void sendKeyOff();
-		void sendEnvelopeChange(short type, uint16_t value);
+		void sendEnvelopeChange(unsigned char type, float value);
 		void sendSequencerStepPress(int stepIndex);
 		void sendSequencerReset();
 		void sendFrequencyChange(float freq);

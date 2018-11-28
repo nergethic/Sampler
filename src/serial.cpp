@@ -33,10 +33,10 @@ void ofApp::sendFrequencyChange(float freq) {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::sendEnvelopeChange(short type, uint16_t value) {
+void ofApp::sendEnvelopeChange(unsigned char type, float value) {
 	serialBuffer[0] = (char)MessageType::ENVELOPE;
 	serialBuffer[1] = type;
-	*((uint16_t*)(serialBuffer + 2)) = (uint16_t)value;
+	*((float*)(serialBuffer + 2)) = value;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);

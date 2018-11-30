@@ -24,15 +24,6 @@ void ofApp::sendKeyOff() {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::sendFrequencyChange(float freq) {
-	serialBuffer[0] = (char)MessageType::KEY;
-	serialBuffer[1] = KeyMsgType::FREQUENCY_CHANGE;
-	*((float*)(serialBuffer + 2)) = freq;
-
-	serial.writeBytes(serialBuffer, 8);
-	clearSerialBuffer(serialBuffer);
-}
-
 void ofApp::sendEnvelopeChange(unsigned char type, float value) {
 	serialBuffer[0] = (char)MessageType::ENVELOPE;
 	serialBuffer[1] = type;
@@ -54,6 +45,26 @@ void ofApp::sendSequencerStepPress(int stepIndex) {
 void ofApp::sendSequencerReset() {
 	serialBuffer[0] = (char)MessageType::SEQUENCER;
 	serialBuffer[1] = SequencerMsgType::RESET;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendOscFrequencyChange(float freq) {
+	serialBuffer[0] = (char)MessageType::OSCILLATOR;
+	serialBuffer[1] = OscMsgType::FREQUENCY;
+	serialBuffer[2] = 0; // TODO: id of oscillator
+	*((float*)(serialBuffer + 3)) = freq;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendOscWaveformChange(short waveformIndex) {
+	serialBuffer[0] = (char)MessageType::OSCILLATOR;
+	serialBuffer[1] = OscMsgType::WAVEFORM;
+	serialBuffer[2] = 0; // TODO: id of oscillator
+	serialBuffer[3] = waveformIndex;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);

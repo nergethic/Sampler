@@ -5,16 +5,21 @@
 #include "circularBuffer.h"
 #include "serial.h"
 
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
+
 enum class MessageType {
 	KEY = 0,
 	ENVELOPE,
-	SEQUENCER
+	SEQUENCER,
+	OSCILLATOR, // TODO
+	LFO, // TODO
+	TEMPO, // TODO,
+	PAUSE
 };
 
 enum KeyMsgType {
 	KEY_PRESS = 0,
-	KEY_RELEASE,
-	FREQUENCY_CHANGE
+	KEY_RELEASE
 };
 
 enum SequencerMsgType {
@@ -28,6 +33,12 @@ enum EnvelopeMsgType {
 	DECAY,
 	SUSTAIN,
 	RELEASE
+};
+
+enum OscMsgType {
+	WAVEFORM = 0,
+	FREQUENCY, 
+	AMPLITUDE
 };
 
 struct KeyFreq {
@@ -54,12 +65,17 @@ class ofApp : public ofBaseApp {
 		void sendEnvelopeChange(unsigned char type, float value);
 		void sendSequencerStepPress(int stepIndex);
 		void sendSequencerReset();
-		void sendFrequencyChange(float freq);
+		void sendOscWaveformChange(short waveformIndex);
+		void sendOscFrequencyChange(float freq);
 	
 		vector<ofxDatGuiComponent*> components;
 		void onButtonEvent(ofxDatGuiButtonEvent e);
 		void onSliderEvent(ofxDatGuiSliderEvent e);
+		void LFOSliderFreq(ofxDatGuiSliderEvent e);
+		void LFOSliderAmp(ofxDatGuiSliderEvent e);
 		void onMatrixEvent(ofxDatGuiMatrixEvent e);
+		void oscWaveformDropdown(ofxDatGuiDropdownEvent e);
+		void LFOWaveformDropdown(ofxDatGuiDropdownEvent e);
 
 		void updateEnvelopePoints(int width, int height);
 
@@ -88,7 +104,7 @@ class ofApp : public ofBaseApp {
 		ofPolyline line;
 		float ahdsr[5];
 
-		bool steps[8];
+		bool steps[16];
 
 		int octave = 3;
 		KeyFreq keyFreq[12];

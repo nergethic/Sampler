@@ -73,13 +73,6 @@ void ofApp::setup() {
 
 	keyFreq[11].key = 'j';
 	keyFreq[11].frequency = 123.470827;
-	
-
-	// UI elements
-	int x = 20;
-	int y = 20;
-	int p = 40;
-	ofxDatGuiComponent* component;
 
 	ahdsr[0] = 10.5;
 	ahdsr[1] = 16.5;
@@ -87,50 +80,84 @@ void ofApp::setup() {
 	ahdsr[3] = 0.5;
 	ahdsr[4] = 230.0;
 
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < ARRAY_LENGTH(steps); ++i) {
 		steps[i] = 0;
 	}
 
-	component = new ofxDatGuiButton("button");
+	// UI elements
+	int x = 20;
+	int y = 20;
+	int p = 40;
+	ofxDatGuiComponent* component;
+
+	//component = new ofxDatGuiButton("button");
+	//component->setPosition(x, y);
+	//component->onButtonEvent(this, &ofApp::onButtonEvent);
+	//components.push_back(component);
+
+	//y += component->getHeight() + p;
+	component = new ofxDatGuiSlider("attack", 0.0f, 3000.0f, ahdsr[0]);
 	component->setPosition(x, y);
-	component->onButtonEvent(this, &ofApp::onButtonEvent);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("hold", 0.0f, 11880.0f, ahdsr[1]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("decay", 0.0f, 11880.0f, ahdsr[2]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("sustain", 0.0f, 1.0f, ahdsr[3]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("release", 0.0f, 11880.0f, ahdsr[4]);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::onSliderEvent);
 	components.push_back(component);
 
 	y += component->getHeight() + p;
-	component = new ofxDatGuiSlider("attack", 0.0, 11880.0, ahdsr[0]);
-	component->setPosition(x, y);
-	component->onSliderEvent(this, &ofApp::onSliderEvent);
-	components.push_back(component);
-
-	y += component->getHeight();
-	component = new ofxDatGuiSlider("hold", 0.0, 11880.0, ahdsr[1]);
-	component->setPosition(x, y);
-	component->onSliderEvent(this, &ofApp::onSliderEvent);
-	components.push_back(component);
-
-	y += component->getHeight();
-	component = new ofxDatGuiSlider("decay", 0.0, 11880.0, ahdsr[2]);
-	component->setPosition(x, y);
-	component->onSliderEvent(this, &ofApp::onSliderEvent);
-	components.push_back(component);
-
-	y += component->getHeight();
-	component = new ofxDatGuiSlider("sustain", 0.0, 1.0, ahdsr[3]);
-	component->setPosition(x, y);
-	component->onSliderEvent(this, &ofApp::onSliderEvent);
-	components.push_back(component);
-
-	y += component->getHeight();
-	component = new ofxDatGuiSlider("release", 0.0, 11880.0, ahdsr[4]);
-	component->setPosition(x, y);
-	component->onSliderEvent(this, &ofApp::onSliderEvent);
-	components.push_back(component);
-
-	y += component->getHeight() + p;
-	component = new ofxDatGuiMatrix("steps", 8, true);
+	component = new ofxDatGuiMatrix("steps", 16, true);
 	component->setWidth(500, 100.0);
 	component->setPosition(x, y);
 	component->onMatrixEvent(this, &ofApp::onMatrixEvent);
+	components.push_back(component);
+
+	x += 300;
+	y = 20;
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("LFO freq", 0.0f, 1000.0f, 5.0f);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::LFOSliderFreq);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiSlider("LFO amp", 0.0f, 0.6f, 0.0f);
+	component->setPosition(x, y);
+	component->onSliderEvent(this, &ofApp::LFOSliderAmp);
+	components.push_back(component);
+
+	y += component->getHeight();
+	vector<string> waveformOptions = { "WAVEFORM_SINE", "WAVEFORM_SAWTOOTH", "WAVEFORM_SQUARE", "WAVEFORM_TRIANGLE" };
+	component = new ofxDatGuiDropdown("LFO", waveformOptions);
+	component->onDropdownEvent(this, &ofApp::LFOWaveformDropdown);
+	component->setPosition(x, y);
+	components.push_back(component);
+
+	y += component->getHeight();
+	component = new ofxDatGuiDropdown("OSC", waveformOptions);
+	component->onDropdownEvent(this, &ofApp::oscWaveformDropdown);
+	component->setPosition(x, y);
 	components.push_back(component);
 
 	// audio buffers
@@ -229,37 +256,42 @@ void ofApp::draw() {
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key) {
 
-
-	if (key >= 48 && key < 58) {
-	//	steps[key - 48] = !steps[key - 48];
-	}
-	//else if (lastPressedKey == key) return;
-	if (lastPressedKey == key) return;
+	if (key == lastPressedKey || key == 0x0000001b) return; // ESC
 
 	float freq = 0.0f;
 
-	for (int i = 0; i < 12; ++i) {
+	for (int i = 0; i < ARRAY_LENGTH(keyFreq); ++i) {
 		if (keyFreq[i].key == (char)key) {
 			freq = keyFreq[i].frequency * pow(2, octave);
-			sendFrequencyChange(freq);
+			sendOscFrequencyChange(freq);
 			break;
 		}
 	}
 
-	if ((char)key == 'x') {
-		octave++;
-		if (octave > 5) {
-			octave = 5;
-		}
-		return;
-	}
+	switch ((char)key) {
+		case 'x': {
+			octave++;
+			if (octave > 5) {
+				octave = 5;
+			}
+			return;
+		} break;
 
-	if ((char)key == 'z') {
-		octave--;
-		if (octave < 0) {
-			octave = 0;
-		}
-		return;
+		case 'z': {
+			octave--;
+			if (octave < 0) {
+				octave = 0;
+			}
+			return;
+		} break;
+
+		case ' ': {
+			octave--;
+			if (octave < 0) {
+				octave = 0;
+			}
+			return;
+		} break;
 	}
 
 	sendKeyOn(key);
@@ -311,4 +343,35 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 
 void ofApp::onMatrixEvent(ofxDatGuiMatrixEvent e) {
 	sendSequencerStepPress(e.child);
+}
+
+void ofApp::oscWaveformDropdown(ofxDatGuiDropdownEvent e) {
+	sendOscWaveformChange((short)e.child);
+}
+
+void ofApp::LFOWaveformDropdown(ofxDatGuiDropdownEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::WAVEFORM;
+	serialBuffer[2] = 0; // TODO: id of oscillator
+	serialBuffer[3] = (short)e.child;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::FREQUENCY;
+	serialBuffer[2] = 0; // TODO: id of LFO
+	*((float*)(serialBuffer + 3)) = e.value;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::AMPLITUDE;
+	serialBuffer[2] = 0; // TODO: id of LFO
+	*((float*)(serialBuffer + 3)) = e.value;
+
+	serial.writeBytes(serialBuffer, 8);
 }

@@ -53,7 +53,7 @@ void ofApp::sendSequencerReset() {
 void ofApp::sendOscFrequencyChange(float freq) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::FREQUENCY;
-	serialBuffer[2] = 0; // TODO: id of oscillator
+	serialBuffer[2] = selectedOscIndex;
 	*((float*)(serialBuffer + 3)) = freq;
 
 	serial.writeBytes(serialBuffer, 8);
@@ -63,8 +63,24 @@ void ofApp::sendOscFrequencyChange(float freq) {
 void ofApp::sendOscWaveformChange(short waveformIndex) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::WAVEFORM;
-	serialBuffer[2] = 0; // TODO: id of oscillator
+	serialBuffer[2] = selectedOscIndex;
 	serialBuffer[3] = waveformIndex;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendModeChange(bool mode) {
+	serialBuffer[0] = (char)MessageType::PAUSE;
+	serialBuffer[1] = (int)mode;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendTempoChange(int val) {
+	serialBuffer[0] = (char)MessageType::TEMPO;
+	serialBuffer[1] = val;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);

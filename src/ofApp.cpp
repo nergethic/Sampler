@@ -160,6 +160,12 @@ void ofApp::setup() {
 	component->setPosition(x, y);
 	components.push_back(component);
 
+	y += component->getHeight();
+	component = new ofxDatGuiToggle("OSC1");
+	component->onToggleEvent(this, &ofApp::oscToggle);
+	component->setPosition(x, y);
+	components.push_back(component);
+
 	// audio buffers
 	sampleRate = 44100;
 	bufferSize = 256; //8192;
@@ -286,10 +292,18 @@ void ofApp::keyPressed(int key) {
 		} break;
 
 		case ' ': {
-			octave--;
-			if (octave < 0) {
-				octave = 0;
-			}
+			liveMode = !liveMode;
+			sendModeChange(liveMode);
+			return;
+		} break;
+
+		case 'c': {
+			sendTempoChange(0);
+			return;
+		} break;
+
+		case 'v': {
+			sendTempoChange(1);
 			return;
 		} break;
 	}
@@ -374,4 +388,8 @@ void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
 	*((float*)(serialBuffer + 3)) = e.value;
 
 	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::oscToggle(ofxDatGuiToggleEvent e) {
+	selectedOscIndex = (int)e.checked;
 }

@@ -67,6 +67,8 @@ class ofApp : public ofBaseApp {
 		void sendSequencerReset();
 		void sendOscWaveformChange(short waveformIndex);
 		void sendOscFrequencyChange(float freq);
+		void sendModeChange(bool mode);
+		void sendTempoChange(int val);
 	
 		vector<ofxDatGuiComponent*> components;
 		void onButtonEvent(ofxDatGuiButtonEvent e);
@@ -76,6 +78,7 @@ class ofApp : public ofBaseApp {
 		void onMatrixEvent(ofxDatGuiMatrixEvent e);
 		void oscWaveformDropdown(ofxDatGuiDropdownEvent e);
 		void LFOWaveformDropdown(ofxDatGuiDropdownEvent e);
+		void oscToggle(ofxDatGuiToggleEvent e);
 
 		void updateEnvelopePoints(int width, int height);
 
@@ -108,4 +111,7 @@ class ofApp : public ofBaseApp {
 
 		int octave = 3;
 		KeyFreq keyFreq[12];
+
+		bool liveMode = true;
+		short selectedOscIndex = 0;
 };

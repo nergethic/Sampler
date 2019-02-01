@@ -129,7 +129,14 @@ void ofApp::setup() {
 	component = new ofxDatGuiMatrix("steps", 16, true);
 	component->setWidth(500, 100.0);
 	component->setPosition(x, y);
-	component->onMatrixEvent(this, &ofApp::onMatrixEvent);
+	component->onMatrixEvent(this, &ofApp::onMatrixEvent0);
+	components.push_back(component);
+
+	y += component->getHeight() + p;
+	component = new ofxDatGuiMatrix("guziczki2", 16, true);
+	component->setWidth(500, 100.0);
+	component->setPosition(x, y);
+	component->onMatrixEvent(this, &ofApp::onMatrixEvent1);
 	components.push_back(component);
 
 	x += 300;
@@ -355,41 +362,22 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 	sendEnvelopeChange(type, e.value);
 }
 
-void ofApp::onMatrixEvent(ofxDatGuiMatrixEvent e) {
-	sendSequencerStepPress(e.child);
+void ofApp::onMatrixEvent0(ofxDatGuiMatrixEvent e) {
+	sendSequencerStepPress(0, e.child);
+}
+
+void ofApp::onMatrixEvent1(ofxDatGuiMatrixEvent e) {
+	sendSequencerStepPress(1, e.child);
 }
 
 void ofApp::oscWaveformDropdown(ofxDatGuiDropdownEvent e) {
 	sendOscWaveformChange((short)e.child);
 }
 
-void ofApp::LFOWaveformDropdown(ofxDatGuiDropdownEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::WAVEFORM;
-	serialBuffer[2] = 0; // TODO: id of oscillator
-	serialBuffer[3] = (short)e.child;
-
-	serial.writeBytes(serialBuffer, 8);
-}
-
-void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::FREQUENCY;
-	serialBuffer[2] = 0; // TODO: id of LFO
-	*((float*)(serialBuffer + 3)) = e.value;
-
-	serial.writeBytes(serialBuffer, 8);
-}
-
-void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::AMPLITUDE;
-	serialBuffer[2] = 0; // TODO: id of LFO
-	*((float*)(serialBuffer + 3)) = e.value;
-
-	serial.writeBytes(serialBuffer, 8);
-}
-
 void ofApp::oscToggle(ofxDatGuiToggleEvent e) {
 	selectedOscIndex = (int)e.checked;
+
+	serialBuffer[0] = (char)MessageType::OSCILLATOR;
+		(int)e.checked;
+	//serial.writeBytes(serialBuffer, 8);
 }

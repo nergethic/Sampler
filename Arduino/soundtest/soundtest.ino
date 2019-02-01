@@ -4,24 +4,6 @@
 #include <SD.h>
 #include <SerialFlash.h>
 
-#include <Audio.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include <SerialFlash.h>
-
-#include <Audio.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include <SerialFlash.h>
-
-#include <Audio.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include <SerialFlash.h>
-
 // GUItool: begin automatically generated code
 AudioSynthWaveformModulated LFO2; //xy=55,446
 AudioSynthWaveformModulated LFO1;           //xy=71.99997329711914,270.00000381469727
@@ -78,6 +60,7 @@ float dt, previousFrameTime;
 int stepLengthMs = 100;
 short currentStepIndex = 0;
 bool liveMode = true;
+short currentOscIndex = 0;
 
 int16_t  grains[2048];
 
@@ -88,7 +71,7 @@ struct SequencerStep {
   bool on;
   float freq;
 };
-SequencerStep sequencerSteps[16];
+SequencerStep sequencerSteps[2][16];
 
 void setup() {
   // put your setup code here, to run once:
@@ -106,7 +89,7 @@ void setup() {
   osc1.frequency(freq);
   osc1.amplitude(0.4);
 
-  noise1.amplitude(0.6);
+  //noise1.amplitude(0.6);
 
   osc2.begin(0);
   osc2.frequency(freq);
@@ -116,8 +99,10 @@ void setup() {
   previousTime = 0;
 
   for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-    sequencerSteps[i].on = 0;
-    sequencerSteps[i].freq = freq;
+    for (int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
+      sequencerSteps[i][j].on = 0;
+      sequencerSteps[i][j].freq = freq;
+    }
   }
 
   //SD.begin(BUILTIN_SDCARD);
@@ -212,26 +197,29 @@ void handleSerialInput(int currentStepIndex) {
       case SEQUENCER: {
         if (serialBuffer[1] == STEP_PRESS) {
           int stepIndex = serialBuffer[2];
-          sequencerSteps[stepIndex].on = !sequencerSteps[stepIndex].on;
+          int seqIndex = serialBuffer[3];
+          sequencerSteps[seqIndex][stepIndex].on = !sequencerSteps[seqIndex][stepIndex].on;
         } else if (serialBuffer[1] == RESET) {
           for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-            sequencerSteps[i].on = 0;
-            sequencerSteps[i].freq = 0;
+            for (int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
+              sequencerSteps[i][j].on = 0;
+              sequencerSteps[i][j].freq = 0;
+            }
           }
         }
       } break;
 
       case OSCILLATOR: {
         char msgType = serialBuffer[1];
-        short oscIndex = serialBuffer[2];
+        currentOscIndex = serialBuffer[2];
         if (msgType == FREQUENCY) {
             freq = *((float*)(serialBuffer+3));
-            oscillators[oscIndex]->frequency(freq);
+            oscillators[currentOscIndex]->frequency(freq);
             //delay(stepLengthMs);
             //envelope1.noteOff();
-            sequencerSteps[currentStepIndex].freq = freq;
+            sequencerSteps[currentOscIndex][currentStepIndex].freq = freq;
         } else if (msgType == WAVEFORM) {
-          oscillators[oscIndex]->begin(serialBuffer[3]);
+          oscillators[currentOscIndex]->begin(serialBuffer[3]);
         }
       } break;
 
@@ -277,21 +265,22 @@ void loop() {
   
   // step sequencer
   if (liveMode == true && (currentTime - previousTime >= stepTime)) {
-    
-    if (sequencerSteps[currentStepIndex].on == true) {
-      oscillators[0]->frequency(sequencerSteps[currentStepIndex].freq);
-      oscillators[1]->frequency(sequencerSteps[currentStepIndex].freq);
-      envelope1.noteOn();
-      //string1.noteOn(freq, 0.5);
-      delay(stepLengthMs); // TODO: make timers
-      //string1.noteOff(0.5);
-      envelope1.noteOff();
 
-      //if (currentStepIndex == 0 || currentStepIndex == 8) playSdWav1.play("KICK.WAV");
+    for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
+      if (sequencerSteps[i][currentStepIndex].on == true) {
+        oscillators[i]->frequency(sequencerSteps[i][currentStepIndex].freq);
+        envelope1.noteOn();
+        //string1.noteOn(freq, 0.5);
+        delay(stepLengthMs); // TODO: make timers
+        //string1.noteOff(0.5);
+        envelope1.noteOff();
+
+        //if (currentStepIndex == 0 || currentStepIndex == 8) playSdWav1.play("KICK.WAV");
+      }
     }
 
     currentStepIndex++;
-    if (currentStepIndex == ARRAY_LENGTH(sequencerSteps)) {
+    if (currentStepIndex == ARRAY_LENGTH(sequencerSteps[0])) {
       currentStepIndex = 0;
     }
     

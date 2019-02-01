@@ -33,10 +33,11 @@ void ofApp::sendEnvelopeChange(unsigned char type, float value) {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::sendSequencerStepPress(int stepIndex) {
+void ofApp::sendSequencerStepPress(int seqwencerIndex, int stepIndex) {
 	serialBuffer[0] = (char)MessageType::SEQUENCER;
 	serialBuffer[1] = SequencerMsgType::STEP_PRESS;
 	serialBuffer[2] = (char)stepIndex;
+	serialBuffer[3] = (char)seqwencerIndex;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
@@ -84,4 +85,31 @@ void ofApp::sendTempoChange(int val) {
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::LFOWaveformDropdown(ofxDatGuiDropdownEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::WAVEFORM;
+	serialBuffer[2] = 1; // TODO: id of oscillator lol
+	serialBuffer[3] = (short)e.child;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::FREQUENCY;
+	serialBuffer[2] = 0; // TODO: id of LFO
+	*((float*)(serialBuffer + 3)) = e.value;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::AMPLITUDE;
+	serialBuffer[2] = 0; // TODO: id of LFO
+	*((float*)(serialBuffer + 3)) = e.value;
+
+	serial.writeBytes(serialBuffer, 8);
 }

@@ -63,7 +63,7 @@ class ofApp : public ofBaseApp {
 		void sendKeyOn(int key);
 		void sendKeyOff();
 		void sendEnvelopeChange(unsigned char type, float value);
-		void sendSequencerStepPress(int stepIndex);
+		void sendSequencerStepPress(int seqInex, int stepIndex);
 		void sendSequencerReset();
 		void sendOscWaveformChange(short waveformIndex);
 		void sendOscFrequencyChange(float freq);
@@ -75,7 +75,8 @@ class ofApp : public ofBaseApp {
 		void onSliderEvent(ofxDatGuiSliderEvent e);
 		void LFOSliderFreq(ofxDatGuiSliderEvent e);
 		void LFOSliderAmp(ofxDatGuiSliderEvent e);
-		void onMatrixEvent(ofxDatGuiMatrixEvent e);
+		void onMatrixEvent0(ofxDatGuiMatrixEvent e);
+		void onMatrixEvent1(ofxDatGuiMatrixEvent e);
 		void oscWaveformDropdown(ofxDatGuiDropdownEvent e);
 		void LFOWaveformDropdown(ofxDatGuiDropdownEvent e);
 		void oscToggle(ofxDatGuiToggleEvent e);

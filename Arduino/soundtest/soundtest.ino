@@ -47,9 +47,6 @@ AudioConnection          patchCord21(mixer1, 0, usb1, 0);
 AudioControlSGTL5000     sgtl5000_1;     //xy=100.00000762939453,583.0000057220459
 // GUItool: end automatically generated code
 
-
-
-
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 
 float freq = 500;
@@ -60,12 +57,13 @@ float dt, previousFrameTime;
 int stepLengthMs = 100;
 short currentStepIndex = 0;
 bool liveMode = true;
-short currentOscIndex = 0;
+short selectedOscIndex = 0;
 
 int16_t  grains[2048];
 
 AudioSynthWaveformModulated* oscillators[4];
 AudioSynthWaveformModulated* lfo[4];
+AudioEffectEnvelope* envelopes[4];
 
 struct SequencerStep {
   bool on;
@@ -78,12 +76,8 @@ void setup() {
   Serial.begin(115200);
 
   oscillators[0] = &osc1;
-  oscillators[1] = &osc2;
+  oscillators[1] = &osc3;
   lfo[0] = &LFO1;
-
-  LFO1.begin(0);
-  LFO1.frequency(0);
-  LFO1.amplitude(0.0);
   
   osc1.begin(0);
   osc1.frequency(freq);
@@ -91,15 +85,22 @@ void setup() {
 
   //noise1.amplitude(0.6);
 
-  osc2.begin(0);
-  osc2.frequency(freq);
-  osc2.amplitude(0.4);
+  osc3.begin(0);
+  osc3.frequency(freq);
+  osc3.amplitude(0.4);
+
+  envelopes[0] = &envelope1;
+  envelopes[1] = &envelope2;
+
+  LFO1.begin(0);
+  LFO1.frequency(0);
+  LFO1.amplitude(0.0);
 
   stepTime = 24.7;
   previousTime = 0;
 
-  for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-    for (int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
+  for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
+    for (unsigned int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
       sequencerSteps[i][j].on = 0;
       sequencerSteps[i][j].freq = freq;
     }
@@ -138,7 +139,8 @@ enum SequencerMsgType {
 enum OscMsgType {
   WAVEFORM = 0,
   FREQUENCY,
-  AMPLITUDE
+  AMPLITUDE,
+  SWITCH_OSC
 };
 
 void handleSerialInput(int currentStepIndex) {
@@ -151,14 +153,14 @@ void handleSerialInput(int currentStepIndex) {
         char msgType = serialBuffer[1];
 
         if (msgType == KEY_RELEASE) {
-          envelope1.noteOff();
-          } else if (msgType == KEY_PRESS) {
+          envelopes[selectedOscIndex]->noteOff();
+        } else if (msgType == KEY_PRESS) {
             
           char keyCode = serialBuffer[2];
           if (keyCode >= 48 && keyCode < 58) {
-              //sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
+            //sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
           } else {
-            envelope1.noteOn();
+            envelopes[selectedOscIndex]->noteOn();
             //drum1.frequency(freq/2.0);
             //drum1.length(250);
             //drum1.secondMix(0.5);
@@ -173,35 +175,35 @@ void handleSerialInput(int currentStepIndex) {
         
         switch (serialBuffer[1]) {
           case 0: {
-            envelope1.attack(val);
+            envelopes[selectedOscIndex]->attack(val);
           } break;
 
           case 1: {
-            envelope1.hold(val);
+            envelopes[selectedOscIndex]->hold(val);
           } break;
 
           case 2: {
-            envelope1.decay(val);
+            envelopes[selectedOscIndex]->decay(val);
           } break;
 
           case 3: {
-            envelope1.sustain(val);
+            envelopes[selectedOscIndex]->sustain(val);
           } break;
 
           case 4: {
-            envelope1.release(val);
+            envelopes[selectedOscIndex]->release(val);
           } break;
         }
       } break;
 
       case SEQUENCER: {
         if (serialBuffer[1] == STEP_PRESS) {
-          int stepIndex = serialBuffer[2];
-          int seqIndex = serialBuffer[3];
+          short seqIndex = (char)serialBuffer[2];
+          short stepIndex = (char)serialBuffer[3];
           sequencerSteps[seqIndex][stepIndex].on = !sequencerSteps[seqIndex][stepIndex].on;
         } else if (serialBuffer[1] == RESET) {
-          for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-            for (int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
+          for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
+            for (unsigned int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
               sequencerSteps[i][j].on = 0;
               sequencerSteps[i][j].freq = 0;
             }
@@ -211,15 +213,16 @@ void handleSerialInput(int currentStepIndex) {
 
       case OSCILLATOR: {
         char msgType = serialBuffer[1];
-        currentOscIndex = serialBuffer[2];
         if (msgType == FREQUENCY) {
-            freq = *((float*)(serialBuffer+3));
-            oscillators[currentOscIndex]->frequency(freq);
+            freq = *((float*)(serialBuffer+2));
+            oscillators[selectedOscIndex]->frequency(freq);
             //delay(stepLengthMs);
-            //envelope1.noteOff();
-            sequencerSteps[currentOscIndex][currentStepIndex].freq = freq;
+            //envelopes[selectedOscIndex]->noteOff();
+            sequencerSteps[selectedOscIndex][currentStepIndex].freq = freq;
         } else if (msgType == WAVEFORM) {
-          oscillators[currentOscIndex]->begin(serialBuffer[3]);
+            oscillators[selectedOscIndex]->begin(serialBuffer[2]);
+        } else if (msgType == SWITCH_OSC) {
+            selectedOscIndex = (char)serialBuffer[2];
         }
       } break;
 
@@ -264,16 +267,17 @@ void loop() {
   //previousFrameTime = currentTime;
   
   // step sequencer
-  if (liveMode == true && (currentTime - previousTime >= stepTime)) {
+  // if (liveMode == true && (currentTime - previousTime >= stepTime)) {
+  if (currentTime - previousTime >= stepTime) {
 
-    for (int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
+    for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
       if (sequencerSteps[i][currentStepIndex].on == true) {
         oscillators[i]->frequency(sequencerSteps[i][currentStepIndex].freq);
-        envelope1.noteOn();
+        envelopes[i]->noteOn();
         //string1.noteOn(freq, 0.5);
         delay(stepLengthMs); // TODO: make timers
         //string1.noteOff(0.5);
-        envelope1.noteOff();
+        //envelopes[i]->noteOff();
 
         //if (currentStepIndex == 0 || currentStepIndex == 8) playSdWav1.play("KICK.WAV");
       }
@@ -287,5 +291,5 @@ void loop() {
     previousTime = currentTime;
   }
   
-  delay(5);
+  //delay(5);
 }

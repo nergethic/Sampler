@@ -38,12 +38,18 @@ enum EnvelopeMsgType {
 enum OscMsgType {
 	WAVEFORM = 0,
 	FREQUENCY, 
-	AMPLITUDE
+	AMPLITUDE,
+	SWITCH_OSC
 };
 
 struct KeyFreq {
 	char key;
 	float frequency;
+};
+
+struct Oscillator {
+	short waveformIndex;
+	float ahdsr[5];
 };
 
 class ofApp : public ofBaseApp {
@@ -63,22 +69,26 @@ class ofApp : public ofBaseApp {
 		void sendKeyOn(int key);
 		void sendKeyOff();
 		void sendEnvelopeChange(unsigned char type, float value);
-		void sendSequencerStepPress(int seqInex, int stepIndex);
+		void sendSequencerStepPress(short seqInex, short stepIndex);
 		void sendSequencerReset();
+		void sendOscChange(short oscIndex);
 		void sendOscWaveformChange(short waveformIndex);
 		void sendOscFrequencyChange(float freq);
 		void sendModeChange(bool mode);
 		void sendTempoChange(int val);
 	
 		vector<ofxDatGuiComponent*> components;
+		ofxDatGuiSlider* AHDSRSliders[5];
+		ofxDatGuiDropdown* oscWaveformDropdown;
+
 		void onButtonEvent(ofxDatGuiButtonEvent e);
 		void onSliderEvent(ofxDatGuiSliderEvent e);
 		void LFOSliderFreq(ofxDatGuiSliderEvent e);
 		void LFOSliderAmp(ofxDatGuiSliderEvent e);
 		void onMatrixEvent0(ofxDatGuiMatrixEvent e);
 		void onMatrixEvent1(ofxDatGuiMatrixEvent e);
-		void oscWaveformDropdown(ofxDatGuiDropdownEvent e);
-		void LFOWaveformDropdown(ofxDatGuiDropdownEvent e);
+		void oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
+		void LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 		void oscToggle(ofxDatGuiToggleEvent e);
 
 		void updateEnvelopePoints(int width, int height);
@@ -106,13 +116,16 @@ class ofApp : public ofBaseApp {
 		unsigned char serialBuffer[8];
 
 		ofPolyline line;
-		float ahdsr[5];
 
-		bool steps[16];
+		Oscillator oscillators[2];
+		short selectedOscIndex = 0;
+		Oscillator* selectedOsc;
+		//float ahdsr[5];
+
+		//bool steps[16];
 
 		int octave = 3;
 		KeyFreq keyFreq[12];
 
-		bool liveMode = true;
-		short selectedOscIndex = 0;
+		bool editMode = true;
 };

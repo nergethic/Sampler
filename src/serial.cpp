@@ -33,11 +33,11 @@ void ofApp::sendEnvelopeChange(unsigned char type, float value) {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::sendSequencerStepPress(int seqwencerIndex, int stepIndex) {
+void ofApp::sendSequencerStepPress(short sequencerIndex, short stepIndex) {
 	serialBuffer[0] = (char)MessageType::SEQUENCER;
 	serialBuffer[1] = SequencerMsgType::STEP_PRESS;
-	serialBuffer[2] = (char)stepIndex;
-	serialBuffer[3] = (char)seqwencerIndex;
+	serialBuffer[2] = (char)sequencerIndex;
+	serialBuffer[3] = (char)stepIndex;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
@@ -51,11 +51,19 @@ void ofApp::sendSequencerReset() {
 	clearSerialBuffer(serialBuffer);
 }
 
+void ofApp::sendOscChange(short oscIndex) {
+	serialBuffer[0] = (char)MessageType::OSCILLATOR;
+	serialBuffer[1] = OscMsgType::SWITCH_OSC;
+	serialBuffer[2] = (char)oscIndex;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
 void ofApp::sendOscFrequencyChange(float freq) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::FREQUENCY;
-	serialBuffer[2] = selectedOscIndex;
-	*((float*)(serialBuffer + 3)) = freq;
+	*((float*)(serialBuffer + 2)) = freq;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
@@ -64,8 +72,7 @@ void ofApp::sendOscFrequencyChange(float freq) {
 void ofApp::sendOscWaveformChange(short waveformIndex) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::WAVEFORM;
-	serialBuffer[2] = selectedOscIndex;
-	serialBuffer[3] = waveformIndex;
+	serialBuffer[2] = waveformIndex;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
@@ -87,7 +94,7 @@ void ofApp::sendTempoChange(int val) {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::LFOWaveformDropdown(ofxDatGuiDropdownEvent e) {
+void ofApp::LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
 	serialBuffer[0] = (char)MessageType::LFO;
 	serialBuffer[1] = OscMsgType::WAVEFORM;
 	serialBuffer[2] = 1; // TODO: id of oscillator lol

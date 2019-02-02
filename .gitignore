@@ -56,3 +56,5 @@ bin/
 obj/
 
 \.vs/
+
+src/ofApp\.cpp~RFbab1888\.TMP

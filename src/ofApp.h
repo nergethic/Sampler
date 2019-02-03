@@ -13,7 +13,7 @@ enum class MessageType {
 	SEQUENCER,
 	OSCILLATOR, // TODO
 	LFO, // TODO
-	TEMPO, // TODO,
+	TEMPO,
 	PAUSE
 };
 

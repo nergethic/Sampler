@@ -51,39 +51,47 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=100.00000762939453,583.00000572204
 
 float freq = 500;
 char serialBuffer[8];
+unsigned char sendBuff[8];
 float stepTime;
 float previousTime, currentTime;
 float dt, previousFrameTime;
 int stepLengthMs = 300;
 short currentStepIndex = 0;
 bool liveMode = true;
+short selectedOscUnitIndex = 0;
 short selectedOscIndex = 0;
 
 int16_t grains[2048];
 
 AudioSynthWaveformModulated* lfo[4];
-AudioEffectEnvelope* envelopes[4];
 
 struct SequencerStep {
   bool on;
   float freq;
 };
-SequencerStep sequencerSteps[2][16];
+SequencerStep stepSequencers[2][16];
 
-struct SynthOsc {
-  AudioSynthWaveformModulated* osc1;
-  AudioSynthWaveformModulated* osc2;
+struct OscUnit {
+  AudioEffectEnvelope* envelope;
+  AudioSynthWaveformModulated* osc[2];
 };
-SynthOsc synthOscs[2];
+OscUnit oscUnits[2];
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
 
-  synthOscs[0].osc1 = &osc1;
-  synthOscs[0].osc2 = &osc2;
-  synthOscs[1].osc1 = &osc3;
-  synthOscs[1].osc2 = &osc4;
+  for (unsigned int i = 0; i < ARRAY_LENGTH(sendBuff); ++i) {
+    sendBuff[i] = 0;  
+  }
+
+  oscUnits[0].osc[0] = &osc1;
+  oscUnits[0].osc[1] = &osc2;
+  oscUnits[0].envelope = &envelope1;
+  
+  oscUnits[1].osc[0] = &osc3;
+  oscUnits[1].osc[1] = &osc4;
+  oscUnits[1].envelope = &envelope2;
 
   lfo[0] = &LFO1;
   
@@ -105,8 +113,9 @@ void setup() {
 
   //noise1.amplitude(0.6);
 
-  envelopes[0] = &envelope1;
-  envelopes[1] = &envelope2;
+  // TODO play with this value
+  envelope1.releaseNoteOn(8);
+  envelope2.releaseNoteOn(8);
 
   LFO1.begin(0);
   LFO1.frequency(0);
@@ -115,10 +124,10 @@ void setup() {
   stepTime = 24.7;
   previousTime = 0;
 
-  for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-    for (unsigned int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
-      sequencerSteps[i][j].on = false;
-      sequencerSteps[i][j].freq = 0;
+  for (unsigned int i=0; i < ARRAY_LENGTH(stepSequencers); ++i) {
+    for (unsigned int j=0; j < ARRAY_LENGTH(stepSequencers[0]); ++j) {
+      stepSequencers[i][j].on = false;
+      stepSequencers[i][j].freq = 0;
     }
   }
 
@@ -149,7 +158,8 @@ enum KeyMsgType {
 
 enum SequencerMsgType {
   STEP_PRESS = 0,
-  RESET
+  RESET,
+  STEP_CHANGE
 };
 
 enum OscMsgType {
@@ -168,16 +178,16 @@ void handleSerialInput(int currentStepIndex) {
       case KEY: {
         char msgType = serialBuffer[1];
 
-        if (msgType == KEY_RELEASE)
-          envelopes[selectedOscIndex]->noteOff();
+        if (msgType == KEY_RELEASE) {
+          oscUnits[selectedOscUnitIndex].envelope->noteOff();
           
         } else if (msgType == KEY_PRESS) {
             
           char keyCode = serialBuffer[2];
           if (keyCode >= 48 && keyCode < 58) {
-            //sequencerSteps[keyCode-48].on = !sequencerSteps[keyCode-48].on;
+            //stepSequencers[keyCode-48].on = !stepSequencers[keyCode-48].on;
           } else {
-            envelopes[selectedOscIndex]->noteOn();
+            oscUnits[selectedOscUnitIndex].envelope->noteOn();
             //drum1.frequency(freq/2.0);
             //drum1.length(250);
             //drum1.secondMix(0.5);
@@ -192,23 +202,23 @@ void handleSerialInput(int currentStepIndex) {
         
         switch (serialBuffer[1]) {
           case 0: {
-            envelopes[selectedOscIndex]->attack(val);
+            oscUnits[selectedOscUnitIndex].envelope->attack(val);
           } break;
 
           case 1: {
-            envelopes[selectedOscIndex]->hold(val);
+            oscUnits[selectedOscUnitIndex].envelope->hold(val);
           } break;
 
           case 2: {
-            envelopes[selectedOscIndex]->decay(val);
+            oscUnits[selectedOscUnitIndex].envelope->decay(val);
           } break;
 
           case 3: {
-            envelopes[selectedOscIndex]->sustain(val);
+            oscUnits[selectedOscUnitIndex].envelope->sustain(val);
           } break;
 
           case 4: {
-            envelopes[selectedOscIndex]->release(val);
+            oscUnits[selectedOscUnitIndex].envelope->release(val);
           } break;
         }
       } break;
@@ -217,17 +227,29 @@ void handleSerialInput(int currentStepIndex) {
         if (serialBuffer[1] == STEP_PRESS) {
           short seqIndex = (char)serialBuffer[2];
           short stepIndex = (char)serialBuffer[3];
-          bool newStepState = !sequencerSteps[seqIndex][stepIndex].on;
-          sequencerSteps[seqIndex][stepIndex].on = newStepState;
+          bool newStepState = !stepSequencers[seqIndex][stepIndex].on;
+          stepSequencers[seqIndex][stepIndex].on = newStepState;
           if (newStepState == false) {
-              //sequencerSteps[seqIndex][stepIndex].freq = 0;
+              //stepSequencers[seqIndex][stepIndex].freq = 0;
           }
         } else if (serialBuffer[1] == RESET) {
-          for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-            for (unsigned int j=0; j < ARRAY_LENGTH(sequencerSteps[0]); ++j) {
-              sequencerSteps[i][j].on = 0;
-              sequencerSteps[i][j].freq = 0;
+          for (unsigned int i=0; i < ARRAY_LENGTH(stepSequencers); ++i) {
+            for (unsigned int j=0; j < ARRAY_LENGTH(stepSequencers[0]); ++j) {
+              stepSequencers[i][j].on = 0;
+              stepSequencers[i][j].freq = 0;
             }
+          }
+        } else if (serialBuffer[1] == STEP_CHANGE) {
+          if (serialBuffer[2] == 0) {
+            currentStepIndex--;
+          } else {
+            currentStepIndex++;
+          }
+          
+          if (currentStepIndex == 16) {
+            currentStepIndex = 0;
+          } else if (currentStepIndex < 0) {
+            currentStepIndex = 15;
           }
         }
       } break;
@@ -236,16 +258,16 @@ void handleSerialInput(int currentStepIndex) {
         char msgType = serialBuffer[1];
         if (msgType == FREQUENCY) {
             freq = *((float*)(serialBuffer+2));
-            synthOscs[selectedOscIndex].osc1->frequency(freq);
-            synthOscs[selectedOscIndex].osc2->frequency(freq+100);
+            oscUnits[selectedOscUnitIndex].osc[0]->frequency(freq);
+            oscUnits[selectedOscUnitIndex].osc[1]->frequency(freq);
             //delay(stepLengthMs);
-            //envelopes[selectedOscIndex]->noteOff();
-            sequencerSteps[selectedOscIndex][currentStepIndex].freq = freq;
+            //oscUnits[selectedOscUnitIndex].envelope->noteOff();
+            stepSequencers[selectedOscIndex][currentStepIndex].freq = freq;
         } else if (msgType == WAVEFORM) {
-            synthOscs[selectedOscIndex].osc1->begin(serialBuffer[2]);
-            synthOscs[selectedOscIndex].osc2->begin(serialBuffer[2]+1);
+            oscUnits[selectedOscUnitIndex].osc[selectedOscIndex]->begin(serialBuffer[2]);
         } else if (msgType == SWITCH_OSC) {
-            selectedOscIndex = (char)serialBuffer[2];
+            selectedOscUnitIndex = (char)serialBuffer[2];
+            selectedOscIndex     = (char)serialBuffer[3];
         }
       } break;
 
@@ -280,8 +302,9 @@ void handleSerialInput(int currentStepIndex) {
 }
 
 void loop() {
-  
-  for (int i = 0; i < 2; ++i) {
+
+  // TODO: how many iterations?
+  for (int i = 0; i < 4; ++i) {
     handleSerialInput(currentStepIndex);
   }
 
@@ -290,29 +313,29 @@ void loop() {
   //previousFrameTime = currentTime;
   
   // step sequencer
-  // if (liveMode == true && (currentTime - previousTime >= stepTime)) {
-  if (currentTime - previousTime >= stepTime) {
-
-    for (unsigned int i=0; i < ARRAY_LENGTH(sequencerSteps); ++i) {
-      if (sequencerSteps[i][currentStepIndex].on == true) {
-        synthOscs[i].osc1->frequency(sequencerSteps[i][currentStepIndex].freq);
-        synthOscs[i].osc2->frequency(sequencerSteps[i][currentStepIndex].freq+100);
-        envelopes[i]->noteOn();
+  if (liveMode == true && currentTime - previousTime >= stepTime) {
+    sendBuff[0] = (char)currentStepIndex;
+    Serial.write(sendBuff, 8);
+    for (unsigned int i=0; i < ARRAY_LENGTH(stepSequencers); ++i) {
+      if (stepSequencers[i][currentStepIndex].on == true) {
+        oscUnits[i].osc[0]->frequency(stepSequencers[i][currentStepIndex].freq);
+        oscUnits[i].osc[1]->frequency(stepSequencers[i][currentStepIndex].freq+100);
+        oscUnits[i].envelope->noteOn();
         //string1.noteOn(freq, 0.5);
         //delay(stepLengthMs); // TODO: make timers
         //string1.noteOff(0.5);
         //if (checkTick()) {
-          //envelopes[i]->noteOff();
+          //oscUnits[selectedOscUnitIndex].envelope->noteOff();
         //}
 
         //if (currentStepIndex == 0 || currentStepIndex == 8) playSdWav1.play("KICK.WAV");
       } else {
-        envelopes[i]->noteOff();
+        oscUnits[i].envelope->noteOff();
       }
     }
 
     currentStepIndex++;
-    if (currentStepIndex == ARRAY_LENGTH(sequencerSteps[0])) {
+    if (currentStepIndex == ARRAY_LENGTH(stepSequencers[0])) {
       currentStepIndex = 0;
     }
     

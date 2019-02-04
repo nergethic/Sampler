@@ -24,7 +24,8 @@ enum KeyMsgType {
 
 enum SequencerMsgType {
 	STEP_PRESS = 0,
-	RESET
+	RESET,
+	STEP_CHANGE
 };
 
 enum EnvelopeMsgType {
@@ -49,7 +50,15 @@ struct KeyFreq {
 
 struct Oscillator {
 	short waveformIndex;
+	short envelopeIndex;
+	float* ahdsr;
+	// float amplitude;
+};
+
+struct OscUnit {
 	float ahdsr[5];
+	Oscillator oscillators[2];
+	// TODO noise
 };
 
 class ofApp : public ofBaseApp {
@@ -71,11 +80,12 @@ class ofApp : public ofBaseApp {
 		void sendEnvelopeChange(unsigned char type, float value);
 		void sendSequencerStepPress(short seqInex, short stepIndex);
 		void sendSequencerReset();
-		void sendOscChange(short oscIndex);
+		void sendOscChange(short oscUnitIndex, short oscIndex);
 		void sendOscWaveformChange(short waveformIndex);
 		void sendOscFrequencyChange(float freq);
 		void sendModeChange(bool mode);
 		void sendTempoChange(int val);
+		void sendStepChange(short val);
 	
 		vector<ofxDatGuiComponent*> components;
 		ofxDatGuiSlider* AHDSRSliders[5];
@@ -85,11 +95,11 @@ class ofApp : public ofBaseApp {
 		void onSliderEvent(ofxDatGuiSliderEvent e);
 		void LFOSliderFreq(ofxDatGuiSliderEvent e);
 		void LFOSliderAmp(ofxDatGuiSliderEvent e);
+		void oscToggleEvent(ofxDatGuiMatrixEvent e);
 		void onMatrixEvent0(ofxDatGuiMatrixEvent e);
 		void onMatrixEvent1(ofxDatGuiMatrixEvent e);
 		void oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 		void LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
-		void oscToggle(ofxDatGuiToggleEvent e);
 
 		void updateEnvelopePoints(int width, int height);
 
@@ -114,18 +124,20 @@ class ofApp : public ofBaseApp {
 		// 1   - additional info like oscillator id
 		// 2-7 - data
 		unsigned char serialBuffer[8];
+		unsigned char receiveBuffer[8];
 
 		ofPolyline line;
 
-		Oscillator oscillators[2];
+		OscUnit oscUnits[2];
+		Oscillator* oscillators[4];
+		short selectedOscUnitIndex = 0;
 		short selectedOscIndex = 0;
 		Oscillator* selectedOsc;
-		//float ahdsr[5];
-
-		//bool steps[16];
 
 		int octave = 3;
 		KeyFreq keyFreq[12];
 
 		bool editMode = true;
+
+		short currentStep = 0;
 };

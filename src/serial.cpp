@@ -51,10 +51,11 @@ void ofApp::sendSequencerReset() {
 	clearSerialBuffer(serialBuffer);
 }
 
-void ofApp::sendOscChange(short oscIndex) {
+void ofApp::sendOscChange(short oscUnitIndex, short oscIndex) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::SWITCH_OSC;
-	serialBuffer[2] = (char)oscIndex;
+	serialBuffer[2] = (char)oscUnitIndex;
+	serialBuffer[3] = (char)oscIndex;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
@@ -89,6 +90,15 @@ void ofApp::sendModeChange(bool mode) {
 void ofApp::sendTempoChange(int val) {
 	serialBuffer[0] = (char)MessageType::TEMPO;
 	serialBuffer[1] = val;
+
+	serial.writeBytes(serialBuffer, 8);
+	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendStepChange(short val) {
+	serialBuffer[0] = (char)MessageType::SEQUENCER;
+	serialBuffer[1] = SequencerMsgType::STEP_CHANGE;
+	serialBuffer[2] = val;
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);

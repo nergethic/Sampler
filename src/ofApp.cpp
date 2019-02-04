@@ -40,9 +40,49 @@ void ofApp::setup() {
 
 	vector<string> waveformOptions = { "WAVEFORM_SINE", "WAVEFORM_SAWTOOTH", "WAVEFORM_SQUARE", "WAVEFORM_TRIANGLE" };
 
+	oscUnits[0].oscillators[0].ahdsr = oscUnits[0].ahdsr;
+	oscUnits[0].oscillators[1].ahdsr = oscUnits[0].ahdsr;
+	oscUnits[1].oscillators[0].ahdsr = oscUnits[1].ahdsr;
+	oscUnits[1].oscillators[1].ahdsr = oscUnits[1].ahdsr;
+
+	oscillators[0] = &oscUnits[0].oscillators[0];
+	oscillators[1] = &oscUnits[0].oscillators[1];
+	oscillators[2] = &oscUnits[1].oscillators[0];
+	oscillators[3] = &oscUnits[1].oscillators[1];
+
+	for (int oscUnitIndex = 0; oscUnitIndex < ARRAY_LENGTH(oscUnits); ++oscUnitIndex) {
+
+		float *ahdsr = oscUnits[oscUnitIndex].ahdsr;
+
+		ahdsr[0] = 10.5;
+		ahdsr[1] = 16.5;
+		ahdsr[2] = 300.0;
+		ahdsr[3] = 0.5;
+		ahdsr[4] = 230.0;
+
+		for (int oscIndex = 0; oscIndex < ARRAY_LENGTH(oscUnits[0].oscillators); ++oscIndex) {
+
+			sendOscChange(oscUnitIndex, oscIndex);
+
+			int i = 2 * oscUnitIndex + oscIndex;
+			oscillators[i]->waveformIndex = 0;
+			sendOscWaveformChange(oscillators[i]->waveformIndex);
+
+			sendEnvelopeChange(EnvelopeMsgType::ATTACK,  ahdsr[0]);
+			sendEnvelopeChange(EnvelopeMsgType::HOLD,    ahdsr[1]);
+			sendEnvelopeChange(EnvelopeMsgType::DECAY,   ahdsr[2]);
+			sendEnvelopeChange(EnvelopeMsgType::SUSTAIN, ahdsr[3]);
+			sendEnvelopeChange(EnvelopeMsgType::RELEASE, ahdsr[4]);
+		}
+	}
+
+	selectedOsc = oscillators[selectedOscIndex];
+	sendOscChange(0, selectedOscIndex);
+
+	// key frequencies
 	keyFreq[0].key = 'a';
 	keyFreq[0].frequency = 65.406392;
-	
+
 	keyFreq[1].key = 'w';
 	keyFreq[1].frequency = 69.295658;
 
@@ -76,39 +116,16 @@ void ofApp::setup() {
 	keyFreq[11].key = 'j';
 	keyFreq[11].frequency = 123.470827;
 
-	for (int i = 0; i < ARRAY_LENGTH(oscillators); ++i) {
-
-		Oscillator* osc = oscillators + i;
-		sendOscChange(i);
-
-		osc->waveformIndex = 0;
-		osc->ahdsr[0] = 10.5;
-		osc->ahdsr[1] = 16.5;
-		osc->ahdsr[2] = 300.0;
-		osc->ahdsr[3] = 0.5;
-		osc->ahdsr[4] = 230.0;
-
-		sendEnvelopeChange(EnvelopeMsgType::ATTACK, osc->ahdsr[0]);
-		sendEnvelopeChange(EnvelopeMsgType::HOLD, osc->ahdsr[1]);
-		sendEnvelopeChange(EnvelopeMsgType::DECAY, osc->ahdsr[2]);
-		sendEnvelopeChange(EnvelopeMsgType::SUSTAIN, osc->ahdsr[3]);
-		sendEnvelopeChange(EnvelopeMsgType::RELEASE, osc->ahdsr[4]);
-
-		sendOscWaveformChange(0);
-	}
-
-	selectedOsc = &oscillators[selectedOscIndex];
-	sendOscChange(selectedOscIndex);
-
 	// UI elements
 	int x = 20;
 	int y = 20;
 	int p = 40;
 	ofxDatGuiComponent* component;
 
-	//y += component->getHeight() + p;
-	component = new ofxDatGuiToggle("TOGGLE OSC");
-	component->onToggleEvent(this, &ofApp::oscToggle);
+	component = new ofxDatGuiMatrix("SELECTED OSC", 4, true);
+	component->onMatrixEvent(this, &ofApp::oscToggleEvent);
+	ofxDatGuiMatrix* matrix = (ofxDatGuiMatrix*)component;
+	matrix->setRadioMode(true);
 	component->setPosition(x, y);
 	components.push_back(component);
 
@@ -243,6 +260,11 @@ void ofApp::setup() {
 void ofApp::update() {
 	for (int i = 0; i < components.size(); i++) components[i]->update();
 	updateEnvelopePoints(400, 200);
+
+	while (serial.available() >= 8) {
+		serial.readBytes(receiveBuffer, 8);
+		currentStep = receiveBuffer[0];
+	}
 }
 
 void ofApp::exit() {
@@ -287,6 +309,9 @@ void ofApp::draw() {
 	for (int i = 0; i < components.size(); i++) components[i]->draw();
 
 	line.draw();
+
+	ofDrawRectangle(120.0 + (25.0*currentStep), 210.0, 23.0, 23.0);
+	//currentStep
 	//fbo->begin();
 	//ofClear(ui->pColor["bg"]);
 	//drawFbo();
@@ -332,12 +357,32 @@ void ofApp::keyPressed(int key) {
 		} break;
 
 		case 'c': {
-			sendTempoChange(0);
+			sendTempoChange(1);
 			return;
 		} break;
 
 		case 'v': {
-			sendTempoChange(1);
+			sendTempoChange(0);
+			return;
+		} break;
+
+		case OF_KEY_LEFT:
+		case '[': {
+			sendStepChange(0);
+			currentStep--;
+			if (currentStep < 0) {
+				currentStep = 15;
+			}
+			return;
+		} break;
+
+		case OF_KEY_RIGHT:
+		case ']': {
+			sendStepChange(1);
+			currentStep++;
+			if (currentStep > 15) {
+				currentStep = 0;
+			}
 			return;
 		} break;
 	}
@@ -389,6 +434,21 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 	sendEnvelopeChange(type, e.value);
 }
 
+void ofApp::oscToggleEvent(ofxDatGuiMatrixEvent e) {
+	selectedOscUnitIndex = ((int)e.child) / 2;
+	selectedOscIndex = ((int)e.child) % 2;
+
+	selectedOsc = oscillators[2*selectedOscUnitIndex + selectedOscIndex];
+
+	oscWaveformDropdown->select(selectedOsc->waveformIndex);
+	for (int i = 0; i < ARRAY_LENGTH(AHDSRSliders); ++i) {
+		double value = selectedOsc->ahdsr[i];
+		AHDSRSliders[i]->setValue(value);
+	}
+
+	sendOscChange(selectedOscUnitIndex, selectedOscIndex);
+}
+
 void ofApp::onMatrixEvent0(ofxDatGuiMatrixEvent e) {
 	sendSequencerStepPress(0, e.child);
 }
@@ -400,18 +460,4 @@ void ofApp::onMatrixEvent1(ofxDatGuiMatrixEvent e) {
 void ofApp::oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
 	sendOscWaveformChange((short)e.child);
 	selectedOsc->waveformIndex = (short)e.child;
-}
-
-void ofApp::oscToggle(ofxDatGuiToggleEvent e) {
-	selectedOscIndex = (int)e.checked;
-
-	selectedOsc = oscillators + selectedOscIndex;
-
-	oscWaveformDropdown->select(selectedOsc->waveformIndex);
-	for (int i = 0; i < ARRAY_LENGTH(AHDSRSliders); ++i) {
-		double value = selectedOsc->ahdsr[i];
-		AHDSRSliders[i]->setValue(value);
-	}
-
-	sendOscChange(selectedOscIndex);
 }

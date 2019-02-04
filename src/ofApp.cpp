@@ -14,6 +14,8 @@ void ofApp::updateEnvelopePoints(int width, int height) {
 
 	line.addVertex(offsetX + x, offsetY);
 
+	Oscillator* selectedOsc = &oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex];
+
 	// A
 	x = selectedOsc->ahdsr[0] * ratio;
 	y = height;
@@ -50,6 +52,14 @@ void ofApp::setup() {
 	oscillators[2] = &oscUnits[1].oscillators[0];
 	oscillators[3] = &oscUnits[1].oscillators[1];
 
+	lfos[0].amplitude = 0.0f;
+	lfos[0].frequency = 0.0f;
+	lfos[0].waveformIndex = 0;
+
+	lfos[1].amplitude = 0.0f;
+	lfos[1].frequency = 0.0f;
+	lfos[1].waveformIndex = 0;
+
 	for (int oscUnitIndex = 0; oscUnitIndex < ARRAY_LENGTH(oscUnits); ++oscUnitIndex) {
 
 		float *ahdsr = oscUnits[oscUnitIndex].ahdsr;
@@ -64,9 +74,16 @@ void ofApp::setup() {
 
 			sendOscChange(oscUnitIndex, oscIndex);
 
+			sendLFOAmplitudeChange(0.4f);
+			sendLFOFrequencyChange(500.0f);
+			sendLFOWaveformChange(0);
+
 			int i = 2 * oscUnitIndex + oscIndex;
 			oscillators[i]->waveformIndex = 0;
 			sendOscWaveformChange(oscillators[i]->waveformIndex);
+
+			oscillators[i]->amplitude = 0.4f;
+			sendOscAmplitudeChange(oscillators[i]->amplitude);
 
 			sendEnvelopeChange(EnvelopeMsgType::ATTACK,  ahdsr[0]);
 			sendEnvelopeChange(EnvelopeMsgType::HOLD,    ahdsr[1]);
@@ -76,8 +93,7 @@ void ofApp::setup() {
 		}
 	}
 
-	selectedOsc = oscillators[selectedOscIndex];
-	sendOscChange(0, selectedOscIndex);
+	sendOscChange(selectedOscUnitIndex, selectedOscIndex);
 
 	// key frequencies
 	keyFreq[0].key = 'a';
@@ -154,36 +170,38 @@ void ofApp::setup() {
 	x += 300;
 	y = 20;
 
+	float* ahdsr = oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex].ahdsr;
+
 	//-------
-	component = new ofxDatGuiSlider("attack", 0.0f, 3000.0f, selectedOsc->ahdsr[0]);
+	component = new ofxDatGuiSlider("attack", 0.0f, 3000.0f, ahdsr[0]);
 	AHDSRSliders[0] = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
 	components.push_back(component);
 
 	y += component->getHeight();
-	component = new ofxDatGuiSlider("hold", 0.0f, 11880.0f, selectedOsc->ahdsr[1]);
+	component = new ofxDatGuiSlider("hold", 0.0f, 11880.0f, ahdsr[1]);
 	AHDSRSliders[1] = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
 	components.push_back(component);
 
 	y += component->getHeight();
-	component = new ofxDatGuiSlider("decay", 0.0f, 11880.0f, selectedOsc->ahdsr[2]);
+	component = new ofxDatGuiSlider("decay", 0.0f, 11880.0f, ahdsr[2]);
 	AHDSRSliders[2] = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
 	components.push_back(component);
 
 	y += component->getHeight();
-	component = new ofxDatGuiSlider("sustain", 0.0f, 1.0f, selectedOsc->ahdsr[3]);
+	component = new ofxDatGuiSlider("sustain", 0.0f, 1.0f, ahdsr[3]);
 	AHDSRSliders[3] = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
 	components.push_back(component);
 
 	y += component->getHeight();
-	component = new ofxDatGuiSlider("release", 0.0f, 11880.0f, selectedOsc->ahdsr[4]);
+	component = new ofxDatGuiSlider("release", 0.0f, 11880.0f, ahdsr[4]);
 	AHDSRSliders[4] = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::onSliderEvent);
@@ -192,21 +210,26 @@ void ofApp::setup() {
 	x += 300;
 	y = 20;
 	component = new ofxDatGuiSlider("LFO freq", 0.0f, 1000.0f, 5.0f);
+	lfoFreqSlider = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::LFOSliderFreq);
 	components.push_back(component);
 
 	y += component->getHeight();
 	component = new ofxDatGuiSlider("LFO amp", 0.0f, 0.6f, 0.0f);
+	lfoAmpSlider = (ofxDatGuiSlider*)component;
 	component->setPosition(x, y);
 	component->onSliderEvent(this, &ofApp::LFOSliderAmp);
 	components.push_back(component);
 
 	y += component->getHeight();
 	component = new ofxDatGuiDropdown("LFO SHAPE", waveformOptions);
+	lfoWaveformDropdown = (ofxDatGuiDropdown*)component;
 	component->onDropdownEvent(this, &ofApp::LFOWaveformDropdownEvent);
 	component->setPosition(x, y);
 	components.push_back(component);
+
+	updateUIAfterOscSwitch(selectedOscUnitIndex, selectedOscIndex);
 
 	// audio buffers
 	sampleRate = 44100;
@@ -404,6 +427,18 @@ void ofApp::keyReleased(int key) {
 	sendKeyOff();
 }
 
+void ofApp::updateUIAfterOscSwitch(short selectedOscUnitIndex, short selectedOscIndex) {
+	oscWaveformDropdown->select(oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex].waveformIndex);
+	for (int i = 0; i < ARRAY_LENGTH(AHDSRSliders); ++i) {
+		double value = oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex].ahdsr[i];
+		AHDSRSliders[i]->setValue(value);
+	}
+
+	lfoFreqSlider->setValue(lfos[selectedOscUnitIndex].frequency);
+	lfoAmpSlider->setValue(lfos[selectedOscUnitIndex].amplitude);
+	lfoWaveformDropdown->select(lfos[selectedOscUnitIndex].waveformIndex);
+}
+
 // ---------- UI EVENTS ----------
 
 void ofApp::onButtonEvent(ofxDatGuiButtonEvent e)
@@ -418,21 +453,23 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 
 	string name = e.target->getLabel();
 
+	float* ahdsr = oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex].ahdsr;
+
 	if (name == "attack") {
 		type = EnvelopeMsgType::ATTACK;
-		selectedOsc->ahdsr[0] = val;
+		ahdsr[0] = val;
 	} else if (name == "hold") {
 		type = EnvelopeMsgType::HOLD;
-		selectedOsc->ahdsr[1] = val;
+		ahdsr[1] = val;
 	} else if (name == "decay") {
 		type = EnvelopeMsgType::DECAY;
-		selectedOsc->ahdsr[2] = val;
+		ahdsr[2] = val;
 	} else if (name == "sustain") {
 		type = EnvelopeMsgType::SUSTAIN;
-		selectedOsc->ahdsr[3] = val;
+		ahdsr[3] = val;
 	} else if (name == "release") {
 		type = EnvelopeMsgType::RELEASE;
-		selectedOsc->ahdsr[4] = val;
+		ahdsr[4] = val;
 	}
 	else return;
 
@@ -442,15 +479,7 @@ void ofApp::onSliderEvent(ofxDatGuiSliderEvent e)
 void ofApp::oscToggleEvent(ofxDatGuiMatrixEvent e) {
 	selectedOscUnitIndex = ((int)e.child) / 2;
 	selectedOscIndex = ((int)e.child) % 2;
-
-	selectedOsc = oscillators[2*selectedOscUnitIndex + selectedOscIndex];
-
-	oscWaveformDropdown->select(selectedOsc->waveformIndex);
-	for (int i = 0; i < ARRAY_LENGTH(AHDSRSliders); ++i) {
-		double value = selectedOsc->ahdsr[i];
-		AHDSRSliders[i]->setValue(value);
-	}
-
+	updateUIAfterOscSwitch(selectedOscUnitIndex, selectedOscIndex);
 	sendOscChange(selectedOscUnitIndex, selectedOscIndex);
 }
 
@@ -463,6 +492,6 @@ void ofApp::onMatrixEvent1(ofxDatGuiMatrixEvent e) {
 }
 
 void ofApp::oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
-	sendOscWaveformChange((short)e.child);
-	selectedOsc->waveformIndex = (short)e.child;
+	sendOscWaveformChange(e.child);
+	oscUnits[selectedOscUnitIndex].oscillators[selectedOscIndex].waveformIndex = e.child;
 }

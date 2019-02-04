@@ -49,7 +49,7 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=100.00000762939453,583.00000572204
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 
-float freq = 500;
+float freq = 500.0;
 char serialBuffer[8];
 unsigned char sendBuff[8];
 float stepTime;

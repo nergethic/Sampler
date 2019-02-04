@@ -70,6 +70,14 @@ void ofApp::sendOscFrequencyChange(float freq) {
 	clearSerialBuffer(serialBuffer);
 }
 
+void ofApp::sendLFOFrequencyChange(float freq) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::FREQUENCY;
+	*((float*)(serialBuffer + 2)) = freq;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
 void ofApp::sendOscWaveformChange(short waveformIndex) {
 	serialBuffer[0] = (char)MessageType::OSCILLATOR;
 	serialBuffer[1] = OscMsgType::WAVEFORM;
@@ -77,6 +85,30 @@ void ofApp::sendOscWaveformChange(short waveformIndex) {
 
 	serial.writeBytes(serialBuffer, 8);
 	clearSerialBuffer(serialBuffer);
+}
+
+void ofApp::sendLFOWaveformChange(short waveformIndex) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::WAVEFORM;
+	serialBuffer[2] = waveformIndex;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::sendOscAmplitudeChange(float val) {
+	serialBuffer[0] = (char)MessageType::OSCILLATOR;
+	serialBuffer[1] = OscMsgType::AMPLITUDE;
+	*((float*)(serialBuffer + 2)) = val;
+
+	serial.writeBytes(serialBuffer, 8);
+}
+
+void ofApp::sendLFOAmplitudeChange(float val) {
+	serialBuffer[0] = (char)MessageType::LFO;
+	serialBuffer[1] = OscMsgType::AMPLITUDE;
+	*((float*)(serialBuffer + 2)) = val;
+
+	serial.writeBytes(serialBuffer, 8);
 }
 
 void ofApp::sendModeChange(bool mode) {
@@ -105,25 +137,16 @@ void ofApp::sendStepChange(short val) {
 }
 
 void ofApp::LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::WAVEFORM;
-	serialBuffer[2] = (short)e.child;
-
-	serial.writeBytes(serialBuffer, 8);
+	sendLFOWaveformChange(e.child);
+	lfos[selectedOscUnitIndex].waveformIndex = e.child;
 }
 
 void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::FREQUENCY;
-	*((float*)(serialBuffer + 2)) = e.value;
-
-	serial.writeBytes(serialBuffer, 8);
+	sendLFOFrequencyChange(e.value);
+	lfos[selectedOscUnitIndex].frequency = e.value;
 }
 
 void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
-	serialBuffer[0] = (char)MessageType::LFO;
-	serialBuffer[1] = OscMsgType::AMPLITUDE;
-	*((float*)(serialBuffer + 2)) = e.value;
-
-	serial.writeBytes(serialBuffer, 8);
+	sendLFOAmplitudeChange(e.value);
+	lfos[selectedOscUnitIndex].amplitude = e.value;
 }

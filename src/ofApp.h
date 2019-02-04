@@ -11,8 +11,8 @@ enum class MessageType {
 	KEY = 0,
 	ENVELOPE,
 	SEQUENCER,
-	OSCILLATOR, // TODO
-	LFO, // TODO
+	OSCILLATOR,
+	LFO,
 	TEMPO,
 	PAUSE
 };
@@ -48,17 +48,23 @@ struct KeyFreq {
 	float frequency;
 };
 
+struct LFO {
+	float amplitude;
+	float frequency;
+	short waveformIndex;
+};
+
 struct Oscillator {
 	short waveformIndex;
 	short envelopeIndex;
 	float* ahdsr;
-	// float amplitude;
+	float amplitude;
 };
 
 struct OscUnit {
 	float ahdsr[5];
 	Oscillator oscillators[2];
-	// TODO noise
+	// TODO noise amp..
 };
 
 class ofApp : public ofBaseApp {
@@ -83,6 +89,11 @@ class ofApp : public ofBaseApp {
 		void sendOscChange(short oscUnitIndex, short oscIndex);
 		void sendOscWaveformChange(short waveformIndex);
 		void sendOscFrequencyChange(float freq);
+		void sendOscAmplitudeChange(float val);
+		void sendLFOFrequencyChange(float freq);
+		void sendLFOWaveformChange(short waveformIndex);
+		void sendLFOAmplitudeChange(float val);
+
 		void sendModeChange(bool mode);
 		void sendTempoChange(int val);
 		void sendStepChange(short val);
@@ -90,6 +101,9 @@ class ofApp : public ofBaseApp {
 		vector<ofxDatGuiComponent*> components;
 		ofxDatGuiSlider* AHDSRSliders[5];
 		ofxDatGuiDropdown* oscWaveformDropdown;
+		ofxDatGuiDropdown* lfoWaveformDropdown;
+		ofxDatGuiSlider* lfoFreqSlider;
+		ofxDatGuiSlider* lfoAmpSlider;
 
 		void onButtonEvent(ofxDatGuiButtonEvent e);
 		void onSliderEvent(ofxDatGuiSliderEvent e);
@@ -101,6 +115,7 @@ class ofApp : public ofBaseApp {
 		void oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 		void LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 
+		void updateUIAfterOscSwitch(short selectedOscUnitIndex, short selectedOscIndex);
 		void updateEnvelopePoints(int width, int height);
 
 		bool audioOn = false;
@@ -132,7 +147,7 @@ class ofApp : public ofBaseApp {
 		Oscillator* oscillators[4];
 		short selectedOscUnitIndex = 0;
 		short selectedOscIndex = 0;
-		Oscillator* selectedOsc;
+		LFO lfos[2];
 
 		int octave = 3;
 		KeyFreq keyFreq[12];

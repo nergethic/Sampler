@@ -63,8 +63,6 @@ short selectedOscIndex = 0;
 
 int16_t grains[2048];
 
-AudioSynthWaveformModulated* lfo[4];
-
 struct SequencerStep {
   bool on;
   float freq;
@@ -72,6 +70,7 @@ struct SequencerStep {
 SequencerStep stepSequencers[2][16];
 
 struct OscUnit {
+  AudioSynthWaveformModulated* lfo;
   AudioEffectEnvelope* envelope;
   AudioSynthWaveformModulated* osc[2];
 };
@@ -88,12 +87,12 @@ void setup() {
   oscUnits[0].osc[0] = &osc1;
   oscUnits[0].osc[1] = &osc2;
   oscUnits[0].envelope = &envelope1;
+  oscUnits[0].lfo = &LFO1;
   
   oscUnits[1].osc[0] = &osc3;
   oscUnits[1].osc[1] = &osc4;
   oscUnits[1].envelope = &envelope2;
-
-  lfo[0] = &LFO1;
+  oscUnits[1].lfo = &LFO2;
   
   osc1.begin(0);
   osc1.frequency(freq);
@@ -120,6 +119,10 @@ void setup() {
   LFO1.begin(0);
   LFO1.frequency(0);
   LFO1.amplitude(0.0);
+
+  LFO2.begin(0);
+  LFO2.frequency(0);
+  LFO2.amplitude(0.0);
 
   stepTime = 24.7;
   previousTime = 0;
@@ -169,7 +172,7 @@ enum OscMsgType {
   SWITCH_OSC
 };
 
-void handleSerialInput(int currentStepIndex) {
+void handleSerialInput() {
   if (Serial.available() >= 8) {
 
     Serial.readBytes(serialBuffer, 8);
@@ -185,6 +188,7 @@ void handleSerialInput(int currentStepIndex) {
             
           char keyCode = serialBuffer[2];
           if (keyCode >= 48 && keyCode < 58) {
+            currentStepIndex = keyCode-48;
             //stepSequencers[keyCode-48].on = !stepSequencers[keyCode-48].on;
           } else {
             oscUnits[selectedOscUnitIndex].envelope->noteOn();
@@ -260,8 +264,6 @@ void handleSerialInput(int currentStepIndex) {
             freq = *((float*)(serialBuffer+2));
             oscUnits[selectedOscUnitIndex].osc[0]->frequency(freq);
             oscUnits[selectedOscUnitIndex].osc[1]->frequency(freq);
-            //delay(stepLengthMs);
-            //oscUnits[selectedOscUnitIndex].envelope->noteOff();
             stepSequencers[selectedOscIndex][currentStepIndex].freq = freq;
         } else if (msgType == WAVEFORM) {
             oscUnits[selectedOscUnitIndex].osc[selectedOscIndex]->begin(serialBuffer[2]);
@@ -273,16 +275,15 @@ void handleSerialInput(int currentStepIndex) {
 
       case LFO: {
         char msgType = serialBuffer[1];
-        short oscIndex = serialBuffer[2];
-        float val = *((float*)(serialBuffer+3));
+        float val = *((float*)(serialBuffer+2));
         // TODO: crazy option - take serialBuffer[3] as value without casting to float
         if (msgType == FREQUENCY) {
-            lfo[oscIndex]->frequency(val);
-            //granular1.beginPitchShift(val);
+          oscUnits[selectedOscUnitIndex].lfo->frequency(val);
+          //granular1.beginPitchShift(val);
         } else if (msgType == WAVEFORM) {
-          lfo[oscIndex]->begin(serialBuffer[3]);
+          oscUnits[selectedOscUnitIndex].lfo->begin(serialBuffer[2]);
         } else if (msgType == AMPLITUDE) {
-          lfo[oscIndex]->amplitude(val);
+          oscUnits[selectedOscUnitIndex].lfo->amplitude(val);
         }
       } break;
 
@@ -305,7 +306,7 @@ void loop() {
 
   // TODO: how many iterations?
   for (int i = 0; i < 4; ++i) {
-    handleSerialInput(currentStepIndex);
+    handleSerialInput();
   }
 
   currentTime = millis();
@@ -314,8 +315,12 @@ void loop() {
   
   // step sequencer
   if (liveMode == true && currentTime - previousTime >= stepTime) {
-    sendBuff[0] = (char)currentStepIndex;
-    Serial.write(sendBuff, 8);
+    
+    currentStepIndex++;
+    if (currentStepIndex == ARRAY_LENGTH(stepSequencers[0])) {
+      currentStepIndex = 0;
+    }
+    
     for (unsigned int i=0; i < ARRAY_LENGTH(stepSequencers); ++i) {
       if (stepSequencers[i][currentStepIndex].on == true) {
         oscUnits[i].osc[0]->frequency(stepSequencers[i][currentStepIndex].freq);
@@ -334,11 +339,8 @@ void loop() {
       }
     }
 
-    currentStepIndex++;
-    if (currentStepIndex == ARRAY_LENGTH(stepSequencers[0])) {
-      currentStepIndex = 0;
-    }
-    
+    sendBuff[0] = (char)currentStepIndex;
+    Serial.write(sendBuff, 8);
     previousTime = currentTime;
   }
   

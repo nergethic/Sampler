@@ -107,8 +107,7 @@ void ofApp::sendStepChange(short val) {
 void ofApp::LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
 	serialBuffer[0] = (char)MessageType::LFO;
 	serialBuffer[1] = OscMsgType::WAVEFORM;
-	serialBuffer[2] = 1; // TODO: id of oscillator lol
-	serialBuffer[3] = (short)e.child;
+	serialBuffer[2] = (short)e.child;
 
 	serial.writeBytes(serialBuffer, 8);
 }
@@ -116,8 +115,7 @@ void ofApp::LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {
 void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
 	serialBuffer[0] = (char)MessageType::LFO;
 	serialBuffer[1] = OscMsgType::FREQUENCY;
-	serialBuffer[2] = 0; // TODO: id of LFO
-	*((float*)(serialBuffer + 3)) = e.value;
+	*((float*)(serialBuffer + 2)) = e.value;
 
 	serial.writeBytes(serialBuffer, 8);
 }
@@ -125,8 +123,7 @@ void ofApp::LFOSliderFreq(ofxDatGuiSliderEvent e) {
 void ofApp::LFOSliderAmp(ofxDatGuiSliderEvent e) {
 	serialBuffer[0] = (char)MessageType::LFO;
 	serialBuffer[1] = OscMsgType::AMPLITUDE;
-	serialBuffer[2] = 0; // TODO: id of LFO
-	*((float*)(serialBuffer + 3)) = e.value;
+	*((float*)(serialBuffer + 2)) = e.value;
 
 	serial.writeBytes(serialBuffer, 8);
 }

@@ -387,6 +387,11 @@ void ofApp::keyPressed(int key) {
 		} break;
 	}
 
+	if (key >= 48 && key < 58) {
+		currentStep = key - 48;
+		int x = currentStep;
+	}
+
 	sendKeyOn(key);
 	lastPressedKey = key;
 }

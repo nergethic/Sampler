@@ -40,6 +40,9 @@ void ofApp::setup() {
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
 
+	//ofAddListener(ofEvents().mousePressed, this, &ofApp::onMouseClickEvent);
+	ofAddListener(ofEvents().mouseScrolled, this, &ofApp::onMouseScrollEvent);
+
 	vector<string> waveformOptions = { "WAVEFORM_SINE", "WAVEFORM_SAWTOOTH", "WAVEFORM_SQUARE", "WAVEFORM_TRIANGLE" };
 
 	oscUnits[0].oscillators[0].ahdsr = oscUnits[0].ahdsr;
@@ -425,6 +428,29 @@ void ofApp::keyReleased(int key) {
 		lastPressedKey = -1;
 	}
 	sendKeyOff();
+}
+
+void ofApp::mousePressed(int x, int y, int button) {
+	if (button == 2) {// right button
+		sendOscFrequencyChange(0.0);
+	}
+}
+
+void ofApp::onMouseScrollEvent(ofMouseEventArgs& mouse) {
+	if (mouse.scrollY < 0) { // scroll down
+		sendStepChange(0);
+		currentStep--;
+		if (currentStep < 0) {
+			currentStep = 15;
+		}
+	}
+	else { // scroll up
+		sendStepChange(1);
+		currentStep++;
+		if (currentStep > 15) {
+			currentStep = 0;
+		}
+	}
 }
 
 void ofApp::updateUIAfterOscSwitch(short selectedOscUnitIndex, short selectedOscIndex) {

@@ -6,9 +6,27 @@
 
 #include "AudioSampleKick.h"
 
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
+#include <SerialFlash.h>
+
 // GUItool: begin automatically generated code
+AudioSynthWaveformModulated LFO1;           //xy=1009,173
 AudioSynthWaveformModulated LFO2;           //xy=1010,351
-AudioSynthWaveformModulated LFO1;           //xy=1026,175
 AudioSynthNoiseWhite     noise2;         //xy=1145,410
 AudioSynthWaveformModulated osc3;           //xy=1149,332
 AudioSynthWaveformModulated osc4;           //xy=1153,371
@@ -21,7 +39,8 @@ AudioEffectEnvelope      envelope2;      //xy=1440,286
 AudioEffectEnvelope      envelope1;      //xy=1455,119
 AudioPlayMemory          playMem1;       //xy=1562,569
 AudioSynthSimpleDrum     drum1;          //xy=1573,493
-AudioEffectGranular      granular1;      //xy=1598,126
+AudioEffectGranular      granular1;      //xy=1607,105
+AudioFilterStateVariable filter1;        //xy=1736,129
 AudioMixer4              mixer1;         //xy=1765,489
 AudioMixer4              mixer4;         //xy=1765,572
 AudioFilterStateVariable delayFilter;    //xy=1917,619
@@ -29,10 +48,10 @@ AudioMixer4              mainOutMixer;   //xy=1991,489
 AudioEffectDelay         delay1;         //xy=2008,831
 AudioOutputUSB           usb1;           //xy=2186,490
 AudioOutputI2S           i2s2;           //xy=2187,527
-AudioConnection          patchCord1(LFO2, 0, osc3, 0);
-AudioConnection          patchCord2(LFO2, 0, osc4, 0);
-AudioConnection          patchCord3(LFO1, 0, osc1, 0);
-AudioConnection          patchCord4(LFO1, 0, osc2, 0);
+AudioConnection          patchCord1(LFO1, 0, osc1, 0);
+AudioConnection          patchCord2(LFO1, 0, osc2, 0);
+AudioConnection          patchCord3(LFO2, 0, osc3, 0);
+AudioConnection          patchCord4(LFO2, 0, osc4, 0);
 AudioConnection          patchCord5(noise2, 0, mixer3, 2);
 AudioConnection          patchCord6(osc3, 0, mixer3, 0);
 AudioConnection          patchCord7(osc4, 0, mixer3, 1);
@@ -45,18 +64,22 @@ AudioConnection          patchCord13(envelope2, 0, mixer1, 3);
 AudioConnection          patchCord14(envelope1, granular1);
 AudioConnection          patchCord15(playMem1, 0, mixer4, 0);
 AudioConnection          patchCord16(drum1, 0, mixer1, 2);
-AudioConnection          patchCord17(granular1, 0, mixer1, 0);
-AudioConnection          patchCord18(mixer1, 0, mainOutMixer, 0);
-AudioConnection          patchCord19(mixer4, 0, mainOutMixer, 1);
-AudioConnection          patchCord20(delayFilter, 0, mainOutMixer, 3);
-AudioConnection          patchCord21(mainOutMixer, delay1);
-AudioConnection          patchCord22(mainOutMixer, 0, usb1, 0);
-AudioConnection          patchCord23(mainOutMixer, 0, usb1, 1);
-AudioConnection          patchCord24(mainOutMixer, 0, i2s2, 0);
-AudioConnection          patchCord25(mainOutMixer, 0, i2s2, 1);
-AudioConnection          patchCord26(delay1, 0, delayFilter, 0);
+AudioConnection          patchCord17(granular1, 0, filter1, 0);
+AudioConnection          patchCord18(filter1, 0, mixer1, 0);
+AudioConnection          patchCord19(mixer1, 0, mainOutMixer, 0);
+AudioConnection          patchCord20(mixer4, 0, mainOutMixer, 1);
+AudioConnection          patchCord21(delayFilter, 0, mainOutMixer, 3);
+AudioConnection          patchCord22(mainOutMixer, delay1);
+AudioConnection          patchCord23(mainOutMixer, 0, usb1, 0);
+AudioConnection          patchCord24(mainOutMixer, 0, usb1, 1);
+AudioConnection          patchCord25(mainOutMixer, 0, i2s2, 0);
+AudioConnection          patchCord26(mainOutMixer, 0, i2s2, 1);
+AudioConnection          patchCord27(delay1, 0, delayFilter, 0);
 AudioControlSGTL5000     sgtl5000_1;     //xy=1055,488
 // GUItool: end automatically generated code
+
+
+
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(*arr))
 
@@ -77,6 +100,8 @@ int16_t grains[2048];
 struct SequencerStep {
   bool on;
   float freq;
+  float lfoAmp;
+  float lfoFreq;
 };
 SequencerStep stepSequencers[3][16];
 
@@ -155,6 +180,10 @@ void setup() {
   //delay1.delay(0,400);
   delay1.delay(0,0);
   mainOutMixer.gain(3, 0.0);
+
+  //filter1.frequency(0);
+  filter1.resonance(4.0);
+  filter1.octaveControl(1);
   
   AudioMemory(200);
   delay(500);
@@ -248,11 +277,7 @@ void handleSerialInput() {
         if (serialBuffer[1] == STEP_PRESS) {
           short seqIndex = (char)serialBuffer[2];
           short stepIndex = (char)serialBuffer[3];
-          bool newStepState = !stepSequencers[seqIndex][stepIndex].on;
-          stepSequencers[seqIndex][stepIndex].on = newStepState;
-          if (newStepState == false) {
-              //stepSequencers[seqIndex][stepIndex].freq = 0;
-          }
+          stepSequencers[seqIndex][stepIndex].on = !stepSequencers[seqIndex][stepIndex].on;
         } else if (serialBuffer[1] == RESET) {
           for (unsigned int i=0; i < ARRAY_LENGTH(stepSequencers); ++i) {
             for (unsigned int j=0; j < ARRAY_LENGTH(stepSequencers[0]); ++j) {
@@ -296,11 +321,13 @@ void handleSerialInput() {
         // TODO: crazy option - take serialBuffer[3] as value without casting to float
         if (msgType == FREQUENCY) {
           oscUnits[selectedOscUnitIndex].lfo->frequency(val);
+          stepSequencers[selectedOscUnitIndex][currentStepIndex].lfoFreq = val;
           //granular1.beginPitchShift(val);
         } else if (msgType == WAVEFORM) {
           oscUnits[selectedOscUnitIndex].lfo->begin(serialBuffer[2]);
         } else if (msgType == AMPLITUDE) {
           oscUnits[selectedOscUnitIndex].lfo->amplitude(val);
+          stepSequencers[selectedOscUnitIndex][currentStepIndex].lfoAmp = val;
         }
       } break;
 
@@ -345,6 +372,8 @@ void loop() {
             if (freq == 0) {
               oscUnits[i].envelope->noteOff();
             } else {
+              oscUnits[i].lfo->frequency(stepSequencers[i][currentStepIndex].lfoFreq);
+              oscUnits[i].lfo->amplitude(stepSequencers[i][currentStepIndex].lfoAmp);
               oscUnits[i].osc[0]->frequency(stepSequencers[i][currentStepIndex].freq);
               oscUnits[i].osc[1]->frequency(stepSequencers[i][currentStepIndex].freq);
               oscUnits[i].envelope->noteOn();

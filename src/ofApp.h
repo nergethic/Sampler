@@ -81,7 +81,6 @@ class ofApp : public ofBaseApp {
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mousePressed(int x, int y, int button);
-		//void onMouseClickEvent(int x, int y, int button);
 		void onMouseScrollEvent(ofMouseEventArgs& mouse);
 
 		void sendKeyOn(int key);
@@ -115,6 +114,7 @@ class ofApp : public ofBaseApp {
 		void oscToggleEvent(ofxDatGuiMatrixEvent e);
 		void onMatrixEvent0(ofxDatGuiMatrixEvent e);
 		void onMatrixEvent1(ofxDatGuiMatrixEvent e);
+		void onMatrixEvent2(ofxDatGuiMatrixEvent e);
 		void oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 		void LFOWaveformDropdownEvent(ofxDatGuiDropdownEvent e);
 

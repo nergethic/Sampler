@@ -170,6 +170,13 @@ void ofApp::setup() {
 	component->onMatrixEvent(this, &ofApp::onMatrixEvent1);
 	components.push_back(component);
 
+	y += component->getHeight() + p;
+	component = new ofxDatGuiMatrix("samples", 16, true);
+	component->setWidth(500, 100.0);
+	component->setPosition(x, y);
+	component->onMatrixEvent(this, &ofApp::onMatrixEvent2);
+	components.push_back(component);
+
 	x += 300;
 	y = 20;
 
@@ -515,6 +522,10 @@ void ofApp::onMatrixEvent0(ofxDatGuiMatrixEvent e) {
 
 void ofApp::onMatrixEvent1(ofxDatGuiMatrixEvent e) {
 	sendSequencerStepPress(1, e.child);
+}
+
+void ofApp::onMatrixEvent2(ofxDatGuiMatrixEvent e) {
+	sendSequencerStepPress(2, e.child);
 }
 
 void ofApp::oscWaveformDropdownEvent(ofxDatGuiDropdownEvent e) {

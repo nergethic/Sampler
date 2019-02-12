@@ -77,7 +77,7 @@ void ofApp::setup() {
 
 			sendOscChange(oscUnitIndex, oscIndex);
 
-			sendLFOAmplitudeChange(0.4f);
+			sendLFOAmplitudeChange(0.2f);
 			sendLFOFrequencyChange(500.0f);
 			sendLFOWaveformChange(0);
 

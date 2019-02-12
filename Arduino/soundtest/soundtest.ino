@@ -132,19 +132,19 @@ void setup() {
   
   osc1.begin(0);
   osc1.frequency(freq);
-  osc1.amplitude(0.4);
+  osc1.amplitude(0.2);
 
   osc2.begin(0);
-  osc2.frequency(freq+100);
-  osc2.amplitude(0.4);
+  osc2.frequency(freq);
+  osc2.amplitude(0.2);
 
   osc3.begin(0);
   osc3.frequency(freq);
-  osc3.amplitude(0.4);
+  osc3.amplitude(0.2);
 
   osc4.begin(0);
-  osc4.frequency(freq+400);
-  osc4.amplitude(0.4);
+  osc4.frequency(freq);
+  osc4.amplitude(0.2);
 
   //noise1.amplitude(0.6);
 
@@ -179,11 +179,13 @@ void setup() {
   delayFilter.resonance(1);
   //delay1.delay(0,400);
   delay1.delay(0,0);
-  mainOutMixer.gain(3, 0.0);
 
-  //filter1.frequency(0);
+  filter1.frequency(300);
   filter1.resonance(4.0);
-  filter1.octaveControl(1);
+  //filter1.octaveControl(1);
+
+  mainOutMixer.gain(0, 2.0);
+  mainOutMixer.gain(3, 0.0);
   
   AudioMemory(200);
   delay(500);
@@ -369,11 +371,11 @@ void loop() {
       if (stepSequencers[i][currentStepIndex].on == true) {
         if (i <= 1) {
             float freq = stepSequencers[i][currentStepIndex].freq;
+            oscUnits[i].lfo->frequency(stepSequencers[i][currentStepIndex].lfoFreq);
+            oscUnits[i].lfo->amplitude(stepSequencers[i][currentStepIndex].lfoAmp);
             if (freq == 0) {
               oscUnits[i].envelope->noteOff();
             } else {
-              oscUnits[i].lfo->frequency(stepSequencers[i][currentStepIndex].lfoFreq);
-              oscUnits[i].lfo->amplitude(stepSequencers[i][currentStepIndex].lfoAmp);
               oscUnits[i].osc[0]->frequency(stepSequencers[i][currentStepIndex].freq);
               oscUnits[i].osc[1]->frequency(stepSequencers[i][currentStepIndex].freq);
               oscUnits[i].envelope->noteOn();
